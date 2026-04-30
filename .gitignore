@@ -1,0 +1,30 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.work.sum
+vendor/
+
+# Build outputs
+/bin/
+/dist/
+/build/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local secrets / config
+.env
+.env.local
+
+# Vendor template catalog — provided by the user via --templates, not redistributed
+Templates/
+Templates.zip
