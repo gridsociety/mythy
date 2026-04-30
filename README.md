@@ -1,5 +1,7 @@
 # mythy
 
+![mythy logo](logo.png)
+
 A Go CLI for Thytronic protection relays (XV10P, NV10P, NA10, …) that speaks
 the same wire protocol as the vendor's ThyVisor Windows app: device
 identification, catalog browsing, parameter read/write, configuration
