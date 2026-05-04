@@ -1,2 +1,92 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<DEVICE NAME="TEST_V00" IDENTIFICATION="99999" PROTOCOLRELEASE="0100" XMLRELEASE="0101" FAMILY="TEST"/>
+<DEVICE NAME="TEST_V00" IDENTIFICATION="99999" PROTOCOLRELEASE="0100" XMLRELEASE="0101" FAMILY="TEST">
+  <PRIVATE>
+    <ITEM NAME="Identification" MESSAGE="IDENTIFICATION"/>
+  </PRIVATE>
+  <MODULES>
+    <MODULE name="SchedaMadre" variabile="EnableBoard_Madre" dsc="Mainboard"/>
+    <MODULE name="SchedaMMI" variabile="EnableBoard_MMI" dsc="MMI module"/>
+  </MODULES>
+  <WSDL>
+    <definitions name="TEST_E00">
+      <types><schema/></types>
+
+      <message name="IDENTIFICATION" type="RREG" num="5183" dim="5"/>
+      <message name="IDENTIFICATIONResponse">
+        <part name="Identification"   type="WORD"/>
+        <part name="SerialNumber"     type="LONG"/>
+        <part name="FwRelease"        type="WORD"/>
+        <part name="ProtocolRelease" type="WORD"/>
+      </message>
+
+      <message name="START_CHANGE_DB" type="RREG" num="5123" dim="1"/>
+      <message name="MSG_CMD_RESET_DA_PC" type="RREG" num="5201" dim="1"/>
+      <message name="MSG_GST61850" type="RREG" num="5148" dim="1"/>
+
+      <message level="BY_USER_LEVEL_2" dsc="Address" name="MB_address"
+               CLASS="UBYTE_PARAM" type="WREG" num="6146" dim="1"/>
+      <message name="MB_addressResponse"/>
+
+      <message level="BY_USER_LEVEL_1" dsc="Reference name" name="NomeLinea"
+               CLASS="STRING_PARAM" type="WREG" num="6200" dim="10"/>
+      <message name="NomeLineaResponse"/>
+
+      <message level="NO_CHANGEABLE" dsc="Voltage L1" name="UL1"
+               CLASS="ULONG_RAM" type="RREG" num="40000" dim="2"/>
+      <message name="UL1Response"/>
+
+      <ENUM name="ON_OFF">
+        <RANGE VALUE="OFF" OVERRIDE="0"/>
+        <RANGE VALUE="ON"  OVERRIDE="1"/>
+      </ENUM>
+      <ENUM name="EnumBaudrate">
+        <RANGE VALUE="1200 baud"  OVERRIDE="0"/>
+        <RANGE VALUE="9600 baud"  OVERRIDE="3"/>
+        <RANGE VALUE="19200 baud" OVERRIDE="4"/>
+      </ENUM>
+      <ENUM name="Gst61850_Msg">
+        <RANGE VALUE="WriteCid"      OVERRIDE="0"/>
+        <RANGE VALUE="RestartDevice" OVERRIDE="3"/>
+        <RANGE VALUE="GetIedName"    OVERRIDE="7"/>
+      </ENUM>
+
+      <CLASS NAME="CONTATORE" DIM="3">
+        <VAR NAME="Tipo"      TIPO="ENUM_LONG"/>
+        <VAR NAME="MaxValore" TIPO="UWORD"/>
+      </CLASS>
+      <CLASS NAME="TIMER" DIM="4">
+        <VAR NAME="Valore"     TIPO="ULONG"/>
+        <VAR NAME="Correzione" TIPO="LONG"/>
+      </CLASS>
+    </definitions>
+  </WSDL>
+  <MENU>
+    <GROUP NAME="Read">
+      <GROUP NAME="Measures" REFRESH="YES">
+        <DATA NAME="UL1" DSC="Voltage L1" TIPO="ULONG" READONLY="YES" VALORE=""/>
+      </GROUP>
+    </GROUP>
+    <GROUP NAME="Set">
+      <GROUP NAME="Base">
+        <DATA NAME="NomeLinea" DSC="Reference name" TIPO="STRING" VALORE="......" DEFAULT="......" READONLY="YES"/>
+        <DATA NAME="MB_address" DSC="Modbus address" TIPO="UBYTE" VALORE="1" DEFAULT="1" VISIBILITY="1"/>
+      </GROUP>
+    </GROUP>
+    <GROUP NAME="Communication">
+      <GROUP NAME="RS485">
+        <DATA NAME="MB_baudrate" DSC="Baudrate RS485" TIPO="ENUM" ENUM="EnumBaudrate" VALORE="3" DEFAULT="3"/>
+      </GROUP>
+    </GROUP>
+    <GROUP NAME="Administrator" VISIBILITY="3">
+      <GROUP NAME="Identification" VISIBILITY="3">
+        <DATA NAME="Identification" DSC="Identifier number" TIPO="WORD" VALORE="99999" DEFAULT="99999" READONLY="YES"/>
+      </GROUP>
+      <GROUP NAME="Parser 61850" VISIBILITY="3">
+        <COMMAND NAME="MSG_GST61850" DSC="61850 Support" VISIBILITY="1"/>
+      </GROUP>
+    </GROUP>
+    <GROUP NAME="Commands">
+      <COMMAND NAME="MSG_CMD_RESET_DA_PC" DSC="Reset"/>
+    </GROUP>
+  </MENU>
+</DEVICE>
