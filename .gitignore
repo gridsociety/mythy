@@ -28,3 +28,5 @@ vendor/
 # Vendor template catalog — provided by the user via --templates, not redistributed
 Templates/
 Templates.zip
+
+*.cache

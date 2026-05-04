@@ -59,9 +59,25 @@ func Load(opts LoadOptions) (*Template, DeviceEntry, error) {
 		return nil, DeviceEntry{}, err
 	}
 
-	tpl, err := ParseTemplate(path)
+	tpl, err := loadOrParse(path)
 	if err != nil {
 		return nil, DeviceEntry{}, err
 	}
 	return tpl, entry, nil
+}
+
+// loadOrParse tries the .cache sibling first; on miss it parses from XML
+// and then writes the cache. Cache failures (read or write) are logged
+// downstream; the user still gets a parsed template.
+func loadOrParse(xmlPath string) (*Template, error) {
+	cachePath := xmlPath + ".cache"
+	if tpl, err := LoadCache(cachePath, xmlPath); err == nil {
+		return tpl, nil
+	}
+	tpl, err := ParseTemplate(xmlPath)
+	if err != nil {
+		return nil, err
+	}
+	_ = SaveCache(tpl, cachePath) // best-effort
+	return tpl, nil
 }
