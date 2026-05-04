@@ -73,6 +73,20 @@ func printDescribe(w io.Writer, tpl *catalog.Template, d *catalog.Data, g *catal
 	if d.Restart {
 		fmt.Fprintln(w, "restart: required")
 	}
+	if d.Range != nil {
+		if d.Range.Unit != "" {
+			fmt.Fprintf(w, "range: [%d, %d] step=%d  unit=%s  decimals=%d  scale=%d\n",
+				d.Range.Min, d.Range.Max, d.Range.Step, d.Range.Unit, d.Range.Decimals, d.Range.Scale)
+		} else {
+			fmt.Fprintf(w, "range: [%d, %d] step=%d\n", d.Range.Min, d.Range.Max, d.Range.Step)
+		}
+	}
+	if d.Info != nil {
+		fmt.Fprintf(w, "info: unit=%s  decimals=%d  scale=%g\n", d.Info.Unit, d.Info.Decimals, d.Info.Scale)
+	}
+	if d.InfoVis != nil {
+		fmt.Fprintf(w, "visible-when: %s\n", d.InfoVis.Select)
+	}
 	if d.Enum != "" {
 		fmt.Fprintf(w, "enum: %s\n", d.Enum)
 		if e := tpl.Enums[d.Enum]; e != nil {

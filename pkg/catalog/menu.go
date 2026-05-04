@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -40,6 +41,10 @@ type Data struct {
 	Restart     bool   // RESTART="TRUE"
 	Skip        bool   // SKIP="YES"
 	License     string
+
+	Info    *Info
+	InfoVis *InfoVis
+	Range   *DataRange
 
 	// Linked from WSDL in Task 11.
 	Message *Message
@@ -157,11 +162,7 @@ func decodeMenu(dec *xml.Decoder, parentStart *xml.StartElement, parent *Group) 
 				parent.Children = append(parent.Children, g)
 			case "DATA":
 				d := decodeData(t)
-				// DATA elements may have nested <DATA> children (compound types
-				// like CONTATORE / RELE / LED). Skip past them — they're
-				// handled by Plan 1 Task 23 catalog extensions; for now just
-				// consume them.
-				if err := skipChildren(dec); err != nil {
+				if err := decodeDataChildren(dec, &t, d); err != nil {
 					return err
 				}
 				parent.Data = append(parent.Data, d)
@@ -301,4 +302,111 @@ func (g *Group) GobDecode(data []byte) error {
 	g.Data = gg.Data
 	g.Commands = gg.Commands
 	return nil
+}
+
+// decodeDataChildren reads the children of a <DATA> element and
+// populates Data.Info, Data.InfoVis, Data.Range when present. Nested
+// <DATA> children (compound sub-fields such as the inner DATA of
+// CONTATORE / INFO_MISURA) are skipped — the codec recovers their
+// layout from the Class definitions parsed in classes.go.
+func decodeDataChildren(dec *xml.Decoder, parentStart *xml.StartElement, d *Data) error {
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			return fmt.Errorf("decodeDataChildren: %w", err)
+		}
+		switch t := tok.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "INFO":
+				d.Info = decodeInfo(t)
+				if err := dec.Skip(); err != nil {
+					return err
+				}
+			case "INFOVIS":
+				d.InfoVis = &InfoVis{Select: attrValue(t, "SELECT")}
+				if err := dec.Skip(); err != nil {
+					return err
+				}
+			case "RANGE":
+				d.Range = decodeDataRange(t)
+				if err := dec.Skip(); err != nil {
+					return err
+				}
+			default:
+				// Nested <DATA>, anything else — skip; compound layouts
+				// come from the Class registry.
+				if err := dec.Skip(); err != nil {
+					return err
+				}
+			}
+		case xml.EndElement:
+			if t.Name.Local == parentStart.Name.Local {
+				return nil
+			}
+		}
+	}
+}
+
+func decodeInfo(se xml.StartElement) *Info {
+	info := &Info{Extra: make(map[string]string)}
+	for _, a := range se.Attr {
+		switch a.Name.Local {
+		case "UM":
+			info.Unit = a.Value
+		case "DP":
+			n, _ := strconv.Atoi(a.Value)
+			info.Decimals = n
+		case "KVIS":
+			f, _ := strconv.ParseFloat(a.Value, 64)
+			info.Scale = f
+		default:
+			info.Extra[a.Name.Local] = a.Value
+		}
+	}
+	return info
+}
+
+// decodeDataRange parses a numeric-bounds <RANGE> child of <DATA>:
+//   <RANGE VALUE="lo,hi,step" EXT="format,unit,decimals,scale"/>
+// Returns nil if the VALUE attribute isn't a comma-triple (i.e. it's
+// actually an enum entry — those should never appear as DATA children).
+func decodeDataRange(se xml.StartElement) *DataRange {
+	val := attrValue(se, "VALUE")
+	ext := attrValue(se, "EXT")
+	parts := strings.Split(val, ",")
+	if len(parts) != 3 {
+		return nil
+	}
+	lo, _ := strconv.ParseInt(parts[0], 10, 64)
+	hi, _ := strconv.ParseInt(parts[1], 10, 64)
+	step, _ := strconv.ParseInt(parts[2], 10, 64)
+	r := &DataRange{Min: lo, Max: hi, Step: step}
+	if ext != "" {
+		extParts := strings.SplitN(ext, ",", 4)
+		if len(extParts) >= 1 {
+			r.Format = extParts[0]
+		}
+		if len(extParts) >= 2 {
+			r.Unit = extParts[1]
+		}
+		if len(extParts) >= 3 {
+			d, _ := strconv.Atoi(extParts[2])
+			r.Decimals = d
+		}
+		if len(extParts) >= 4 {
+			s, _ := strconv.ParseInt(extParts[3], 10, 64)
+			r.Scale = s
+		}
+	}
+	return r
+}
+
+func attrValue(se xml.StartElement, name string) string {
+	for _, a := range se.Attr {
+		if a.Name.Local == name {
+			return a.Value
+		}
+	}
+	return ""
 }

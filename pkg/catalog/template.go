@@ -21,6 +21,10 @@ type Template struct {
 	Enums    map[string]*Enum       // by name (Task 8)
 	Menu     *Group                 // root menu (Task 9)
 
+	Modules  []ModuleInfo        // <MODULES>/<MODULE> (Task 23)
+	Typedefs map[string]*Typedef // <TYPEDEF> (Task 23)
+	Classes  map[string]*Class   // <CLASS> (Task 23)
+
 	// SourcePath is the file the template was loaded from.
 	SourcePath string
 }
@@ -62,6 +66,12 @@ func ParseTemplate(path string) (*Template, error) {
 	}
 	if err := parseEnums(path, tpl); err != nil {
 		return nil, fmt.Errorf("parse ENUMs: %w", err)
+	}
+	if err := parseModules(path, tpl); err != nil {
+		return nil, fmt.Errorf("parse MODULES: %w", err)
+	}
+	if err := parseTypedefsAndClasses(path, tpl); err != nil {
+		return nil, fmt.Errorf("parse TYPEDEFs/CLASSes: %w", err)
 	}
 	if err := parseMenu(path, tpl); err != nil {
 		return nil, fmt.Errorf("parse MENU: %w", err)
