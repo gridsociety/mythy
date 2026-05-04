@@ -8,7 +8,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "0.0.1"
+// version is overridden at build time via -ldflags "-X main.version=...".
+// The release workflow injects the git tag; local builds keep the default.
+var version = "development-build"
 
 func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
