@@ -4,12 +4,16 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
 // version is overridden at build time via -ldflags "-X main.version=...".
 // The release workflow injects the git tag; local builds keep the default.
+// The leading "v" (Go module convention, e.g. "v1.0.0") is stripped on
+// display because cobra renders this as "mythy version <V>" — the word
+// "version" already encodes the "v".
 var version = "development-build"
 
 func newRootCmd() *cobra.Command {
@@ -17,7 +21,7 @@ func newRootCmd() *cobra.Command {
 		Use:     "mythy",
 		Short:   "CLI for Thytronic protection relays",
 		Long:    "mythy talks to Thytronic Pro-X / Pro-N / XMR protection relays the way ThyVisor does, but smarter.",
-		Version: version,
+		Version: strings.TrimPrefix(version, "v"),
 	}
 	cf := &catalogFlags{}
 	cf.bind(root)
