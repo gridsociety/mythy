@@ -53,8 +53,8 @@ mythy validate --device PROX-VX0-e my-sample.yaml
 ```bash
 # Identify a device (default port 502, IANA-registered Modbus TCP)
 mythy identify --host 192.0.2.10
-# Pass --port 504 to mirror ThyVisor's connection behaviour
-mythy identify --host 192.0.2.10 --port 504
+# Override port if the device is configured differently
+mythy identify --host 192.0.2.10 --port 1502
 
 # Read one or many parameters
 mythy read --host 192.0.2.10 MB_address NomeLinea
