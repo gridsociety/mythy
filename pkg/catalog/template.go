@@ -16,6 +16,9 @@ type Template struct {
 	ProtocolRelease string // <DEVICE PROTOCOLRELEASE>
 	XMLRelease      string // <DEVICE XMLRELEASE>
 
+	Messages map[string]*Message    // by symbolic name (Task 7)
+	ByAddr   map[ByAddrKey]*Message // (FC, wireAddr) lookup (Task 7)
+
 	// SourcePath is the file the template was loaded from.
 	SourcePath string
 }
@@ -29,27 +32,33 @@ type rawTemplate struct {
 	XMLRelease      string   `xml:"XMLRELEASE,attr"`
 }
 
-// ParseTemplate reads the <DEVICE> root attributes only. Later tasks add
-// streaming parsers for <WSDL> and <MENU> that operate on the same file.
+// ParseTemplate reads the <DEVICE> root attributes and the <WSDL> messages.
+// Later tasks add ENUMs (Task 8) and the MENU tree (Task 9).
 func ParseTemplate(path string) (*Template, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
-	defer f.Close()
-
 	var raw rawTemplate
-	if err := xml.NewDecoder(f).Decode(&raw); err != nil {
-		return nil, fmt.Errorf("decode %s: %w", path, err)
+	dec := xml.NewDecoder(f)
+	if err := dec.Decode(&raw); err != nil {
+		f.Close()
+		return nil, fmt.Errorf("decode root %s: %w", path, err)
 	}
-	return &Template{
+	f.Close()
+
+	tpl := &Template{
 		Name:            raw.Name,
 		Identification:  raw.Identification,
 		Family:          raw.Family,
 		ProtocolRelease: raw.ProtocolRelease,
 		XMLRelease:      raw.XMLRelease,
 		SourcePath:      path,
-	}, nil
+	}
+	if err := parseWSDLMessages(path, tpl); err != nil {
+		return nil, fmt.Errorf("parse WSDL: %w", err)
+	}
+	return tpl, nil
 }
 
 // ByAddrKey is the lookup key for a register by its on-the-wire (FC, address).
