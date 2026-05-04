@@ -22,7 +22,7 @@ func NewTCPClient(opts Options) *TCPClient {
 		opts.UnitID = 1
 	}
 	if opts.Port == 0 {
-		opts.Port = 504
+		opts.Port = 502
 	}
 	if opts.RequestTimeout == 0 {
 		opts.RequestTimeout = 2 * time.Second

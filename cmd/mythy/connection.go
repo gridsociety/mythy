@@ -31,7 +31,7 @@ func (c *connFlags) bind(cmd *cobra.Command) {
 	f := cmd.PersistentFlags()
 	f.StringVar(&c.transportKind, "transport", "", "tcp or rtu (auto from --host or --serial if unset)")
 	f.StringVar(&c.host, "host", "", "TCP host:port-less host, e.g. 192.0.2.10")
-	f.Uint16Var(&c.port, "port", 504, "TCP port (default 504, matches ThyVisor)")
+	f.Uint16Var(&c.port, "port", 502, "TCP port (default 502, IANA-registered Modbus TCP)")
 	f.StringVar(&c.serialDev, "serial", "", "serial device path, e.g. /dev/ttyUSB0")
 	f.UintVar(&c.baud, "baud", 19200, "RTU baud rate")
 	f.StringVar(&c.parity, "parity", "N", "RTU parity: N, E, O")

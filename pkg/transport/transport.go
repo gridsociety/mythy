@@ -38,7 +38,7 @@ type Options struct {
 
 	// TCP only
 	Host string
-	Port uint16 // default 504
+	Port uint16 // default 502 (IANA-registered Modbus TCP port)
 
 	// RTU only
 	SerialDevice string // e.g. "/dev/ttyUSB0"
