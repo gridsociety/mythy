@@ -35,6 +35,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newRawCmd(cf))
 	root.AddCommand(newExportCmd(cf))
 	root.AddCommand(newDiffCmd(cf))
+	root.AddCommand(newImportCmd(cf))
 	return root
 }
 
