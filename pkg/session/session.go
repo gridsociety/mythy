@@ -116,3 +116,9 @@ func (s *Session) txnState() bool {
 func (s *Session) mapErr(err error) error {
 	return MapException(err, s.txnState(), s.secMode)
 }
+
+// WriteMultiRaw issues FC16 directly. Used by command wrappers that
+// need to drive WREG payloads outside SetMany's catalog-typed path.
+func (s *Session) WriteMultiRaw(ctx context.Context, addr uint16, regs []uint16) error {
+	return s.mapErr(s.t.WriteMultipleRegisters(ctx, addr, regs))
+}
