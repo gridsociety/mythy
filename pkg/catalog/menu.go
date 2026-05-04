@@ -1,6 +1,8 @@
 package catalog
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -18,7 +20,7 @@ type Group struct {
 	Data     []*Data
 	Commands []*Command
 
-	Parent *Group // nil for the synthetic root
+	Parent *Group // nil for the synthetic root; rebuilt on cache load
 }
 
 // Data is a <DATA NAME=> leaf — a parameter or measurement.
@@ -248,5 +250,55 @@ func skipChildren(dec *xml.Decoder) error {
 			depth--
 		}
 	}
+	return nil
+}
+
+// groupGob is the on-disk shape used by GobEncode / GobDecode below.
+// We round-trip every Group field EXCEPT Parent — back-pointers are
+// rebuilt after decode by reparent (see cache.go). encoding/gob does
+// not honor struct tags, so this manual exclusion is the canonical
+// way to break the Group↔Parent cycle.
+type groupGob struct {
+	Name       string
+	Visibility string
+	Refresh    bool
+	Children   []*Group
+	Data       []*Data
+	Commands   []*Command
+}
+
+// GobEncode implements gob.GobEncoder for *Group, emitting every field
+// except Parent. Without this, gob would recurse infinitely through the
+// Group↔Parent back-pointer cycle.
+func (g *Group) GobEncode() ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	if err := enc.Encode(groupGob{
+		Name:       g.Name,
+		Visibility: g.Visibility,
+		Refresh:    g.Refresh,
+		Children:   g.Children,
+		Data:       g.Data,
+		Commands:   g.Commands,
+	}); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// GobDecode implements gob.GobDecoder for *Group. Parent is left nil;
+// reparent (in cache.go) walks the tree post-decode to re-establish the
+// back-pointers.
+func (g *Group) GobDecode(data []byte) error {
+	var gg groupGob
+	if err := gob.NewDecoder(bytes.NewReader(data)).Decode(&gg); err != nil {
+		return err
+	}
+	g.Name = gg.Name
+	g.Visibility = gg.Visibility
+	g.Refresh = gg.Refresh
+	g.Children = gg.Children
+	g.Data = gg.Data
+	g.Commands = gg.Commands
 	return nil
 }
