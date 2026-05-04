@@ -24,6 +24,15 @@
       <message name="RESET_CHANGE_DB" type="RREG" num="5165" dim="1"/>
       <message name="MSG_CMD_RESET_DA_PC" type="RREG" num="5201" dim="1"/>
       <message name="MSG_GST61850"   type="RREG" num="5148" dim="1"/>
+      <message name="SET_RTC" type="WREG" num="5169" dim="6">
+        <part name="RTCDay"    type="UWORD"/>
+        <part name="RTCMonth"  type="UWORD"/>
+        <part name="RTCYear"   type="UWORD"/>
+        <part name="RTCHour"   type="UWORD"/>
+        <part name="RTCMinute" type="UWORD"/>
+        <part name="RTCSecond" type="UWORD"/>
+      </message>
+      <message name="SET_RTCResponse"/>
 
       <message level="BY_USER_LEVEL_2" dsc="Address" name="MB_address"
                CLASS="UBYTE_PARAM" type="WREG" num="6146" dim="1"/>
@@ -141,6 +150,7 @@
     </GROUP>
     <GROUP NAME="Commands">
       <COMMAND NAME="MSG_CMD_RESET_DA_PC" DSC="Reset"/>
+      <COMMAND NAME="SET_RTC" DSC="Set RTC"/>
     </GROUP>
   </MENU>
 </DEVICE>

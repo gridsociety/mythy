@@ -38,17 +38,29 @@ func (s *Session) Command(ctx context.Context, name string, args map[string]any)
 		}
 		return nil
 	case "WREG":
-		// Parameterized command — write the payload, no edit txn (CMD-style
-		// WREGs the device serves are RAM-class).
-		// Plan 2 supports the no-arg case explicitly; structured arg encoding
-		// lands in Plan 3 alongside compound encoding for export/import.
-		if len(args) > 0 {
-			return fmt.Errorf("command %s takes parameters; structured args land in Plan 3", name)
+		// Build the multi-reg payload from the message's <part> list.
+		regs := make([]uint16, 0, msg.Dim)
+		for _, p := range msg.Parts {
+			val, ok := args[p.Name]
+			if !ok {
+				val = nil // missing parts encode as zero
+			}
+			subRegs, err := encodePart(p.Type, val)
+			if err != nil {
+				return fmt.Errorf("command %s arg %s: %w", name, p.Name, err)
+			}
+			regs = append(regs, subRegs...)
+		}
+		// If the message has no parts (zero-arg WREG), pad with zeros.
+		if len(regs) == 0 {
+			regs = make([]uint16, msg.Dim)
+		}
+		if len(regs) != msg.Dim {
+			return fmt.Errorf("command %s: encoded %d regs, message expects %d", name, len(regs), msg.Dim)
 		}
 		if msg.Dim == 1 {
-			return s.mapErr(s.t.WriteSingleRegister(ctx, uint16(msg.WireAddr()), 0))
+			return s.mapErr(s.t.WriteSingleRegister(ctx, uint16(msg.WireAddr()), regs[0]))
 		}
-		regs := make([]uint16, msg.Dim)
 		return s.mapErr(s.t.WriteMultipleRegisters(ctx, uint16(msg.WireAddr()), regs))
 	}
 	return fmt.Errorf("command %s: unsupported message type %q", name, msg.Type)
@@ -68,4 +80,51 @@ func (s *Session) findCommand(name string) *catalog.Command {
 		}
 	}
 	return nil
+}
+
+// encodePart converts one <part> value into its register slice.
+// Width and encoding match the catalog primitive table (§ 2.10).
+func encodePart(tipo string, val any) ([]uint16, error) {
+	if val == nil {
+		switch tipo {
+		case "LONG", "ULONG", "BIT32":
+			return []uint16{0, 0}, nil
+		}
+		return []uint16{0}, nil
+	}
+	switch tipo {
+	case "BYTE", "UBYTE", "WORD", "UWORD", "BIT16":
+		return []uint16{uint16(asUint64(val))}, nil
+	case "LONG", "ULONG", "BIT32":
+		u := asUint64(val)
+		return []uint16{uint16(u & 0xFFFF), uint16((u >> 16) & 0xFFFF)}, nil
+	case "STRING":
+		s, ok := val.(string)
+		if !ok {
+			return nil, fmt.Errorf("STRING expects string, got %T", val)
+		}
+		out := make([]uint16, (len(s)+1)/2)
+		for i := 0; i < len(s); i += 2 {
+			hi := byte(s[i])
+			var lo byte
+			if i+1 < len(s) {
+				lo = byte(s[i+1])
+			}
+			out[i/2] = uint16(hi)<<8 | uint16(lo)
+		}
+		return out, nil
+	}
+	return nil, fmt.Errorf("encodePart: unsupported TIPO %q", tipo)
+}
+
+func asUint64(v any) uint64 {
+	switch x := v.(type) {
+	case uint64:
+		return x
+	case int64:
+		return uint64(x)
+	case int:
+		return uint64(x)
+	}
+	return 0
 }

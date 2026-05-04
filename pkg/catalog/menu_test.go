@@ -48,7 +48,9 @@ func TestParseMenu(t *testing.T) {
 
 	// Command
 	cmds := root.FindGroup("Commands")
-	if cmds == nil || len(cmds.Commands) != 1 || cmds.Commands[0].Name != "MSG_CMD_RESET_DA_PC" {
+	if cmds == nil || len(cmds.Commands) != 2 ||
+		cmds.Commands[0].Name != "MSG_CMD_RESET_DA_PC" ||
+		cmds.Commands[1].Name != "SET_RTC" {
 		t.Errorf("Commands group: %+v", cmds)
 	}
 }
