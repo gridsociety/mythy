@@ -122,3 +122,18 @@ func (s *Session) mapErr(err error) error {
 func (s *Session) WriteMultiRaw(ctx context.Context, addr uint16, regs []uint16) error {
 	return s.mapErr(s.t.WriteMultipleRegisters(ctx, addr, regs))
 }
+
+// ReadInputRaw / ReadHoldingRaw / WriteSingleRaw expose the underlying
+// transport directly for the `mythy raw` escape hatch. They still go
+// through mapErr so typed errors are produced.
+func (s *Session) ReadInputRaw(ctx context.Context, addr, qty uint16) ([]uint16, error) {
+	regs, err := s.t.ReadInputRegisters(ctx, addr, qty)
+	return regs, s.mapErr(err)
+}
+func (s *Session) ReadHoldingRaw(ctx context.Context, addr, qty uint16) ([]uint16, error) {
+	regs, err := s.t.ReadHoldingRegisters(ctx, addr, qty)
+	return regs, s.mapErr(err)
+}
+func (s *Session) WriteSingleRaw(ctx context.Context, addr, value uint16) error {
+	return s.mapErr(s.t.WriteSingleRegister(ctx, addr, value))
+}
