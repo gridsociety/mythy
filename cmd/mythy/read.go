@@ -24,25 +24,39 @@ func newReadCmd(cf *catalogFlags) *cobra.Command {
 			defer s.Close()
 
 			out := cmd.OutOrStdout()
+			format := cf.global.resolve()
+
+			result := make(map[string]any)
 			if scope != "" {
 				vals, err := s.ReadScope(ctx, scope, includeHidden)
 				if err != nil {
 					return err
 				}
 				for k, v := range vals {
-					fmt.Fprintf(out, "%-30s %s\n", k, v.Format())
+					if format == formatHuman || format == formatUnified || format == "" {
+						fmt.Fprintf(out, "%-30s %s\n", k, v.Format())
+					} else {
+						result[k] = v.Format()
+					}
 				}
-				return nil
-			}
-			if len(args) == 0 {
-				return fmt.Errorf("read: provide names or --scope")
-			}
-			for _, name := range args {
-				v, err := s.Read(ctx, name)
-				if err != nil {
-					return err
+			} else {
+				if len(args) == 0 {
+					return fmt.Errorf("read: provide names or --scope")
 				}
-				fmt.Fprintf(out, "%-30s %s\n", name, v.Format())
+				for _, name := range args {
+					v, err := s.Read(ctx, name)
+					if err != nil {
+						return err
+					}
+					if format == formatHuman || format == formatUnified || format == "" {
+						fmt.Fprintf(out, "%-30s %s\n", name, v.Format())
+					} else {
+						result[name] = v.Format()
+					}
+				}
+			}
+			if format == formatJSON || format == formatYAML {
+				return renderStruct(out, format, result)
 			}
 			return nil
 		},

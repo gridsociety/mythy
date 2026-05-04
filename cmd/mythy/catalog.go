@@ -14,6 +14,7 @@ type catalogFlags struct {
 	templatesRoot string
 	device        string // PRODUCT name, e.g. "PROX-VX0-e"
 	locale        string
+	global        *formatFlags // populated by newRootCmd; nil-safe via formatFlags.resolve()
 }
 
 func (f *catalogFlags) bind(cmd *cobra.Command) {

@@ -22,6 +22,31 @@ func newIdentifyCmd(cf *catalogFlags) *cobra.Command {
 
 			id := s.Ident()
 			out := cmd.OutOrStdout()
+
+			format := cf.global.resolve()
+			if format == formatJSON || format == formatYAML {
+				type identOut struct {
+					Product          string `json:"product"             yaml:"product"`
+					Identification   uint16 `json:"identification"      yaml:"identification"`
+					SerialNumber     uint32 `json:"serial_number"       yaml:"serial_number"`
+					FwRelease        string `json:"fw_release"          yaml:"fw_release"`
+					ProtocolRelease  string `json:"protocol_release"    yaml:"protocol_release"`
+					Family           string `json:"family"              yaml:"family"`
+					TemplateRevision string `json:"template_revision"   yaml:"template_revision"`
+					Authentication   string `json:"authentication"      yaml:"authentication"`
+				}
+				return renderStruct(out, format, identOut{
+					Product:          s.Entry().Product,
+					Identification:   id.Identification,
+					SerialNumber:     id.SerialNumber,
+					FwRelease:        fmt.Sprintf("%04X", id.FwRelease),
+					ProtocolRelease:  fmt.Sprintf("%04X", id.ProtocolRelease),
+					Family:           s.Entry().Family,
+					TemplateRevision: deriveRevision(s.Entry().Product),
+					Authentication:   authStatus(s),
+				})
+			}
+
 			fmt.Fprintf(out, "Product:           %s\n", s.Entry().Product)
 			fmt.Fprintf(out, "Identification:    %d\n", id.Identification)
 			fmt.Fprintf(out, "SerialNumber:     %d\n", id.SerialNumber)
