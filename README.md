@@ -27,28 +27,66 @@ architecture in detail.
 | Transports | Modbus TCP (default port 502) and Modbus RTU on serial / USB-CDC |
 | Safety rails | `--force` gate on destructive operations; client-side validation (RANGE bounds, ENUM membership, STRING length) before any write |
 
-## Install
+## Getting started
+
+### 1. Install mythy
+
+Grab the archive for your platform from the
+[latest release](https://github.com/gridsociety/mythy/releases/latest)
+— prebuilt binaries are published for Linux (386, amd64, armv7,
+arm64), macOS (amd64, arm64), and Windows (386, amd64, arm64).
+Each archive contains a single `mythy` (or `mythy.exe`) binary with
+no runtime dependencies; `SHA256SUMS` is published alongside.
 
 ```bash
-make build      # → bin/mythy
-make test       # run the full test suite
-make lint       # golangci-lint
+# macOS / Linux example
+tar -xzf mythy-v1.0.0-darwin-arm64.tar.gz
+./mythy --version
 ```
 
-`mythy` is a single static binary. No runtime config files.
+To build from source instead, see [Building](#building-from-source).
 
-## Setup
+### 2. Get the device templates
 
 `mythy` reads the parameter catalog from a copy of ThyVisor's
-`Templates/` folder. Point at it once per shell session:
+`Templates/` folder. Thytronic distributes these as a Windows
+installer, so the first-time setup needs a Windows machine:
+
+1. Download the latest "Thytronic Templates" package from
+   <https://www.thytronic.com/products-download-software.php>.
+2. Run the installer on a Windows machine.
+3. Copy the entire `C:\Program Files (x86)\Thytronic\Templates`
+   folder to wherever you keep `mythy`-related files.
+
+The folder is portable — once copied off Windows, `mythy` reads it
+fine on macOS and Linux. You only need to repeat this when Thytronic
+ships a new template release.
+
+> **Why a Windows step?** The installer is an InstallShield package
+> wrapping an encrypted MSI that contains a 360 MB CAB with 2000+
+> template files. We investigated extracting it natively in pure Go
+> (ISSetupStream → MSI → CAB chain) — stage 1 is small, but the MSI
+> table parser and CAB decompressor would be ~2 KLoC of new code with
+> no maintained Go libraries to lean on. The maintenance cost didn't
+> justify the convenience for something that runs at most a few times
+> per vendor template release. A Windows VM works fine for this
+> one-time step.
+
+### 3. Point mythy at the templates
 
 ```bash
-export MYTHY_TEMPLATES="/path/to/ThyVisor/Templates"
+export MYTHY_TEMPLATES="/path/to/Templates"
 ```
 
 Or pass `--templates /path/to/Templates` on every command. Locale
 defaults to `en` (English DSC strings); override with `--locale it`,
 `es`, `ru`, `tr` or set `MYTHY_LOCALE`.
+
+Sanity-check by browsing a device catalog without connecting:
+
+```bash
+mythy show --device PROX-VX0-e
+```
 
 ## Usage
 
@@ -242,6 +280,18 @@ mythy --help
 mythy set --help
 mythy g61850 invoke --help
 ```
+
+## Building from source
+
+```bash
+make build      # → bin/mythy
+make test       # full test suite
+make lint       # golangci-lint
+```
+
+`mythy` is a single static binary with no cgo dependencies; any
+target Go's cross-compiler supports is reachable with the usual
+`GOOS`/`GOARCH` env vars.
 
 ## Project layout
 
