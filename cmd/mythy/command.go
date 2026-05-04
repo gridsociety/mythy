@@ -10,9 +10,17 @@ import (
 func newCommandCmd(cf *catalogFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "command",
-		Short: "Inspect device commands (catalog-only in Plan 1)",
+		Short: "Inspect or invoke <COMMAND> entries in the catalog",
 	}
-	cmd.AddCommand(&cobra.Command{
+	cmd.AddCommand(newCommandListCmd(cf))
+	cmd.AddCommand(newCommandInvokeCmd(cf))
+	return cmd
+}
+
+// newCommandListCmd is the Plan-1 list subcommand, factored out so a
+// sibling `invoke` verb can join it under the same parent.
+func newCommandListCmd(cf *catalogFlags) *cobra.Command {
+	return &cobra.Command{
 		Use:   "list",
 		Short: "List every <COMMAND> entry in the catalog",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -37,6 +45,5 @@ func newCommandCmd(cf *catalogFlags) *cobra.Command {
 			}
 			return nil
 		},
-	})
-	return cmd
+	}
 }
