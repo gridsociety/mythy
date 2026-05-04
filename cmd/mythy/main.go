@@ -20,8 +20,8 @@ func newRootCmd() *cobra.Command {
 	cf := &catalogFlags{}
 	cf.bind(root)
 
-	// Global format flag + aliases (Plan 3 Task 11). Subcommands read
-	// cf.global.resolve() to pick the renderer.
+	// Global --format flag (with --json / --yaml aliases). Subcommands
+	// read cf.global.resolve() to pick the renderer.
 	gf := &formatFlags{}
 	gf.bind(root)
 	cf.global = gf

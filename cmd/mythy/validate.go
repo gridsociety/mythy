@@ -9,8 +9,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// configFile is the on-disk YAML schema mythy uses for export/import.
-// Plan 3 adds full encode/decode; Plan 1 only validates the keys.
+// configFile is a minimal subset of the on-disk YAML schema, just enough
+// for `mythy validate` to check key existence and version compatibility
+// against the catalog without a device connection. The full encode /
+// decode pipeline lives in pkg/configio.
 type configFile struct {
 	MythyVersion int                    `yaml:"mythy_version"`
 	Device       configDevice           `yaml:"device"`

@@ -22,8 +22,8 @@ type ExportOptions struct {
 // emitted in depth-first menu walk order; group boundaries become
 // `# <Path>` head-comments so diffs are readable.
 //
-// Module gating: Session.EnabledModules() (Plan 3 Task 3a) probes every
-// EnableBoard_* register in the catalog once per Session and caches;
+// Module gating: Session.EnabledModules() probes every EnableBoard_*
+// register in the catalog once per Session and caches the result;
 // Export consults the cache to skip DATA tied to disabled boards.
 //
 // Output format: a yaml.Node AST is built explicitly so map-key order

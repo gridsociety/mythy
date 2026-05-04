@@ -7,9 +7,8 @@ package catalog
 // ThyVisor that is not normally relevant for engineers using mythy.
 //
 // IncludeReadOnly is preserved on the struct for callers that pass it,
-// but WalkData does NOT filter on it (audit I5). Read-only filtering
-// lives in pkg/session/ExportFilter (Plan 3 Task 1) — that's the
-// single source of truth.
+// but WalkData does NOT filter on it. Read-only filtering lives in
+// pkg/session.ExportFilter — that's the single source of truth.
 //
 // Module, when non-empty, restricts the walk to DATA entries whose MODULE
 // attribute matches OR is empty. Use this when you've identified which
@@ -24,9 +23,9 @@ type WalkOptions struct {
 // in document order, filtered by opts.IncludeHidden and opts.Module.
 //
 // IncludeReadOnly is intentionally NOT filtered here. The export
-// pipeline (pkg/configio + pkg/session/ExportFilter, Plan 3) is the
-// single source of truth for read-only filtering. WalkData yields
-// every leaf; the caller decides which to keep.
+// pipeline (pkg/configio + pkg/session.ExportFilter) is the single
+// source of truth for read-only filtering. WalkData yields every
+// leaf; the caller decides which to keep.
 func (g *Group) WalkData(opts WalkOptions) []*Data {
 	if g == nil {
 		return nil

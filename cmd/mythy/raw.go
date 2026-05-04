@@ -14,11 +14,10 @@ import (
 // payload. Used by clock-set, net-set, etc. — commands that drive WREG
 // payloads without going through SetMany.
 //
-// Audit C7: when the message's CLASS ends in "_PARAM" (persistent flash),
-// the write is wrapped in a one-shot edit transaction (START_CHANGE_DB
-// / FC16 / END_CHANGE_DB). *_RAM-class messages and unclassified
-// trigger-style WREGs go through directly — same rule as SetMany
-// (Plan 2 Task 15).
+// When the message's CLASS ends in "_PARAM" (persistent flash) the
+// write is wrapped in a one-shot edit transaction (START_CHANGE_DB /
+// FC16 / END_CHANGE_DB). *_RAM-class messages and unclassified
+// trigger-style WREGs go through directly — same rule as SetMany.
 func writeMultiByName(ctx context.Context, s *session.Session, name string, regs []uint16) error {
 	tpl := s.Template()
 	msg, ok := tpl.Messages[name]

@@ -75,7 +75,7 @@ func deriveRevision(product string) string {
 // authStatus uses the catalog (capability) plus the live read (state).
 func authStatus(s interface{ SecureMode() bool }) string {
 	if s.SecureMode() {
-		return "ON (mythy v1 has no auth flow — escalate via ThyVisor first)"
+		return "ON (mythy does not implement an auth flow — escalate via ThyVisor first)"
 	}
 	return "OFF"
 }

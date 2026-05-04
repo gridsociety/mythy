@@ -64,11 +64,11 @@ func newG61850InvokeCmd(cf *catalogFlags) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fn := args[0]
-			// Destructive untested ones need --force (audit C5).
-			// session.IsDestructive is the single source of truth; the
-			// session layer no longer refuses these calls itself.
+			// Destructive functions (WriteCid, ResetCid, ResetAll) need --force.
+			// session.IsDestructive is the single source of truth; the session
+			// layer doesn't refuse these calls itself.
 			if session.IsDestructive(fn) && !force {
-				return fmt.Errorf("g61850 %s is destructive and untested in v1; pass --force to override", fn)
+				return fmt.Errorf("g61850 %s is destructive; pass --force to acknowledge", fn)
 			}
 			ctx := context.Background()
 			s, err := conn.build(ctx, cf)

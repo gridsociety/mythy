@@ -18,12 +18,12 @@ func (e *ErrTransactionNotOpen) Error() string {
 func (e *ErrTransactionNotOpen) Unwrap() error { return e.Underlying }
 
 // ErrAccessLevelRequired means a write was rejected because secure mode
-// is active and the user has not authenticated. mythy v1 doesn't yet
-// drive the auth flow; the operator should escalate via ThyVisor first.
+// is active and the user has not authenticated. mythy doesn't drive an
+// auth flow yet; the operator should escalate via ThyVisor first.
 type ErrAccessLevelRequired struct{ Underlying error }
 
 func (e *ErrAccessLevelRequired) Error() string {
-	return "device rejected the write — secure mode is ON and mythy v1 does not yet implement the auth flow; escalate access level via ThyVisor first"
+	return "device rejected the write — secure mode is ON and mythy does not implement an auth flow yet; escalate access level via ThyVisor first"
 }
 func (e *ErrAccessLevelRequired) Unwrap() error { return e.Underlying }
 

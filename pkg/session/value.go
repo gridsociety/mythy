@@ -7,7 +7,7 @@ import (
 )
 
 // Value is the decoded form of a register read, plus enough metadata
-// for renderers (and the YAML exporter in Plan 3) to format it without
+// for renderers and the YAML exporter to format it without
 // re-traversing the catalog.
 //
 // One of Number / Str / Label / Compound is set depending on Tipo:
