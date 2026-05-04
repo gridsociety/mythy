@@ -19,6 +19,7 @@ type Template struct {
 	Messages map[string]*Message    // by symbolic name (Task 7)
 	ByAddr   map[ByAddrKey]*Message // (FC, wireAddr) lookup (Task 7)
 	Enums    map[string]*Enum       // by name (Task 8)
+	Menu     *Group                 // root menu (Task 9)
 
 	// SourcePath is the file the template was loaded from.
 	SourcePath string
@@ -61,6 +62,9 @@ func ParseTemplate(path string) (*Template, error) {
 	}
 	if err := parseEnums(path, tpl); err != nil {
 		return nil, fmt.Errorf("parse ENUMs: %w", err)
+	}
+	if err := parseMenu(path, tpl); err != nil {
+		return nil, fmt.Errorf("parse MENU: %w", err)
 	}
 	return tpl, nil
 }
