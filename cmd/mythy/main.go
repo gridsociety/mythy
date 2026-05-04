@@ -20,6 +20,7 @@ func newRootCmd() *cobra.Command {
 	cf := &catalogFlags{}
 	cf.bind(root)
 	root.AddCommand(newShowCmd(cf))
+	root.AddCommand(newListCmd(cf))
 	return root
 }
 
