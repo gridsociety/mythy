@@ -68,3 +68,13 @@ func TestG61850SetSkipsReplyRead(t *testing.T) {
 		t.Error("PAR2 was empty; should not have been written")
 	}
 }
+
+func TestRebootNoWait(t *testing.T) {
+	f := transport.NewFake()
+	f.OnWriteSingleOK(54586) // CMD = 3
+	f.OnReadInput(0x141B, 1, []uint16{1})
+	s := mkSession(t, f)
+	if _, err := s.Reboot(context.Background(), false); err != nil {
+		t.Fatalf("Reboot: %v", err)
+	}
+}
