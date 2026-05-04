@@ -34,6 +34,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newNetSetCmd(cf))
 	root.AddCommand(newRawCmd(cf))
 	root.AddCommand(newExportCmd(cf))
+	root.AddCommand(newDiffCmd(cf))
 	return root
 }
 
