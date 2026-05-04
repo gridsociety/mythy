@@ -60,8 +60,9 @@ func LoadCache(cachePath, sourcePath string) (*Template, error) {
 	return &tpl, nil
 }
 
-// reparent rebuilds the Group.Parent back-pointers after gob decode (which
-// strips them via the gob:"-" tag to avoid cycles).
+// reparent rebuilds the Group.Parent back-pointers after gob decode.
+// Group's custom GobEncode/GobDecode (in menu.go) deliberately omits
+// Parent to break the Group↔Parent cycle, so we restore it here.
 func reparent(g *Group, parent *Group) {
 	g.Parent = parent
 	for _, c := range g.Children {
