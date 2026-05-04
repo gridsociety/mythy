@@ -159,6 +159,19 @@ func (s *Session) ReadScope(ctx context.Context, path string, includeHidden bool
 	}
 	leaves := scope.WalkData(catalog.WalkOptions{IncludeHidden: includeHidden, IncludeReadOnly: true})
 
+	enabled, err := s.EnabledModules(ctx)
+	if err != nil {
+		return nil, err
+	}
+	kept := leaves[:0]
+	for _, d := range leaves {
+		if d.Module != "" && enabled != nil && !enabled[d.Module] {
+			continue
+		}
+		kept = append(kept, d)
+	}
+	leaves = kept
+
 	plans := make([]transport.RangePlan, 0, len(leaves))
 	type slot struct {
 		d    *catalog.Data

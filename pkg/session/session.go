@@ -18,7 +18,8 @@ type Session struct {
 	tpl     *catalog.Template
 	entry   catalog.DeviceEntry
 	ident   *Identification // populated by Identify (Task 10)
-	secMode bool            // populated by Identify (Task 10); read of ENABLE_SEC_MODE
+	secMode        bool            // populated by Identify (Task 10); read of ENABLE_SEC_MODE
+	enabledModules map[string]bool // cached by EnabledModules; nil until first call
 
 	mu      sync.Mutex
 	txnOpen bool
@@ -136,4 +137,41 @@ func (s *Session) ReadHoldingRaw(ctx context.Context, addr, qty uint16) ([]uint1
 }
 func (s *Session) WriteSingleRaw(ctx context.Context, addr, value uint16) error {
 	return s.mapErr(s.t.WriteSingleRegister(ctx, addr, value))
+}
+
+// EnabledModules reads every EnableBoard_* register the catalog
+// declares and returns a map keyed by board name
+// (e.g. "SchedaPT100" → true). The result is cached for the
+// lifetime of the Session — call it as often as you like.
+//
+// If a probe read fails (e.g. firmware doesn't expose that
+// register), the module is treated as "unknown → enabled" so
+// the absence of a probe never causes us to skip valid data.
+func (s *Session) EnabledModules(ctx context.Context) (map[string]bool, error) {
+	s.mu.Lock()
+	if s.enabledModules != nil {
+		out := s.enabledModules
+		s.mu.Unlock()
+		return out, nil
+	}
+	s.mu.Unlock()
+
+	out := make(map[string]bool)
+	if s.tpl != nil {
+		for _, m := range s.tpl.Modules {
+			if m.Variabile == "" {
+				continue
+			}
+			v, err := s.Read(ctx, m.Variabile)
+			if err != nil {
+				out[m.Name] = true // unknown → assume enabled
+				continue
+			}
+			out[m.Name] = v.Number != 0
+		}
+	}
+	s.mu.Lock()
+	s.enabledModules = out
+	s.mu.Unlock()
+	return out, nil
 }
