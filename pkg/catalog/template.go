@@ -18,6 +18,7 @@ type Template struct {
 
 	Messages map[string]*Message    // by symbolic name (Task 7)
 	ByAddr   map[ByAddrKey]*Message // (FC, wireAddr) lookup (Task 7)
+	Enums    map[string]*Enum       // by name (Task 8)
 
 	// SourcePath is the file the template was loaded from.
 	SourcePath string
@@ -57,6 +58,9 @@ func ParseTemplate(path string) (*Template, error) {
 	}
 	if err := parseWSDLMessages(path, tpl); err != nil {
 		return nil, fmt.Errorf("parse WSDL: %w", err)
+	}
+	if err := parseEnums(path, tpl); err != nil {
+		return nil, fmt.Errorf("parse ENUMs: %w", err)
 	}
 	return tpl, nil
 }
