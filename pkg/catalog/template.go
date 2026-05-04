@@ -66,6 +66,7 @@ func ParseTemplate(path string) (*Template, error) {
 	if err := parseMenu(path, tpl); err != nil {
 		return nil, fmt.Errorf("parse MENU: %w", err)
 	}
+	linkMenuToMessages(tpl)
 	return tpl, nil
 }
 
