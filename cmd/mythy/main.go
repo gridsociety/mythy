@@ -31,6 +31,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newRebootCmd(cf))
 	root.AddCommand(newResetCmd(cf))
 	root.AddCommand(newClockSetCmd(cf))
+	root.AddCommand(newNetSetCmd(cf))
 	return root
 }
 
