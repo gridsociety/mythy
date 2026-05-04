@@ -25,7 +25,20 @@ func TestWalk(t *testing.T) {
 		got[i] = d.Name
 	}
 	sort.Strings(got)
-	want := []string{"Identification", "MB_address", "MB_baudrate", "NomeLinea", "UL1"}
+	want := []string{
+		"ENABLE_SEC_MODE",
+		"EnF81_TSc",
+		"F25_CONT_P_Sc",
+		"GST61850_CMD",
+		"GST61850_CMD_PAR1",
+		"GST61850_CMD_PAR2",
+		"GST61850_CMD_REPLY",
+		"Identification",
+		"MB_address",
+		"MB_baudrate",
+		"NomeLinea",
+		"UL1",
+	}
 	if !equalSlices(got, want) {
 		t.Errorf("walk(IncludeHidden) = %v, want %v", got, want)
 	}

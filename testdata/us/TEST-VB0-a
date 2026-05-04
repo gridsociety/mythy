@@ -20,8 +20,10 @@
       </message>
 
       <message name="START_CHANGE_DB" type="RREG" num="5123" dim="1"/>
+      <message name="END_CHANGE_DB"   type="RREG" num="5124" dim="1"/>
+      <message name="RESET_CHANGE_DB" type="RREG" num="5165" dim="1"/>
       <message name="MSG_CMD_RESET_DA_PC" type="RREG" num="5201" dim="1"/>
-      <message name="MSG_GST61850" type="RREG" num="5148" dim="1"/>
+      <message name="MSG_GST61850"   type="RREG" num="5148" dim="1"/>
 
       <message level="BY_USER_LEVEL_2" dsc="Address" name="MB_address"
                CLASS="UBYTE_PARAM" type="WREG" num="6146" dim="1"/>
@@ -35,6 +37,35 @@
                CLASS="ULONG_RAM" type="RREG" num="40000" dim="2"/>
       <message name="UL1Response"/>
 
+      <message level="BY_USER_LEVEL_2" dsc="Synchro counter" name="F25_CONT_P_Sc"
+               CLASS="CONTATORE" type="RREG" num="40010" dim="3"/>
+      <message name="F25_CONT_P_ScResponse"/>
+
+      <message level="BY_USER_LEVEL_2" dsc="Frequency enable delay" name="EnF81_TSc"
+               CLASS="TIMER" type="WREG" num="40020" dim="4"/>
+      <message name="EnF81_TScResponse"/>
+
+      <message level="BY_USER_LEVEL_2" dsc="Baudrate RS485" name="MB_baudrate"
+               CLASS="ENUM_PARAM" type="WREG" num="15363" dim="1"/>
+      <message name="MB_baudrateResponse"/>
+
+      <message level="BY_USER_LEVEL_2" dsc="Enable Secure mode" name="ENABLE_SEC_MODE"
+               CLASS="ENUM_RAM" type="RREG" num="54295" dim="1"/>
+      <message name="ENABLE_SEC_MODEResponse"/>
+
+      <message level="BY_USER_LEVEL_1" dsc="61850 cmd" name="GST61850_CMD"
+               CLASS="ENUM_RAM" type="RREG" num="54587" dim="1"/>
+      <message name="GST61850_CMDResponse"/>
+      <message level="BY_USER_LEVEL_1" dsc="61850 par1" name="GST61850_CMD_PAR1"
+               CLASS="STRING_RAM" type="RREG" num="51258" dim="50"/>
+      <message name="GST61850_CMD_PAR1Response"/>
+      <message level="BY_USER_LEVEL_1" dsc="61850 par2" name="GST61850_CMD_PAR2"
+               CLASS="STRING_RAM" type="RREG" num="51259" dim="50"/>
+      <message name="GST61850_CMD_PAR2Response"/>
+      <message level="BY_USER_LEVEL_1" dsc="61850 reply" name="GST61850_CMD_REPLY"
+               CLASS="STRING_RAM" type="RREG" num="51257" dim="50"/>
+      <message name="GST61850_CMD_REPLYResponse"/>
+
       <ENUM name="ON_OFF">
         <RANGE VALUE="OFF" OVERRIDE="0"/>
         <RANGE VALUE="ON"  OVERRIDE="1"/>
@@ -45,9 +76,19 @@
         <RANGE VALUE="19200 baud" OVERRIDE="4"/>
       </ENUM>
       <ENUM name="Gst61850_Msg">
-        <RANGE VALUE="WriteCid"      OVERRIDE="0"/>
-        <RANGE VALUE="RestartDevice" OVERRIDE="3"/>
-        <RANGE VALUE="GetIedName"    OVERRIDE="7"/>
+        <RANGE VALUE="WriteCid"          OVERRIDE="0"/>
+        <RANGE VALUE="ResetCid"          OVERRIDE="1"/>
+        <RANGE VALUE="ResetAll"          OVERRIDE="2"/>
+        <RANGE VALUE="RestartDevice"     OVERRIDE="3"/>
+        <RANGE VALUE="GetIcdName"        OVERRIDE="4"/>
+        <RANGE VALUE="GetCidName"        OVERRIDE="5"/>
+        <RANGE VALUE="GetAccessPointName" OVERRIDE="6"/>
+        <RANGE VALUE="GetIedName"        OVERRIDE="7"/>
+        <RANGE VALUE="SetIedName"        OVERRIDE="8"/>
+        <RANGE VALUE="GetReportScanRate" OVERRIDE="9"/>
+        <RANGE VALUE="SetReportScanRate" OVERRIDE="10"/>
+        <RANGE VALUE="GetBrcbBufSize"    OVERRIDE="11"/>
+        <RANGE VALUE="SetBrcbBufSize"    OVERRIDE="12"/>
       </ENUM>
 
       <CLASS NAME="CONTATORE" DIM="3">
@@ -65,11 +106,20 @@
       <GROUP NAME="Measures" REFRESH="YES">
         <DATA NAME="UL1" DSC="Voltage L1" TIPO="ULONG" READONLY="YES" VALORE=""/>
       </GROUP>
+      <GROUP NAME="Counters">
+        <DATA NAME="F25_CONT_P_Sc" DSC="Synchro counter" TIPO="CONTATORE" READONLY="YES" VALORE=""/>
+      </GROUP>
+      <GROUP NAME="Info">
+        <DATA NAME="ENABLE_SEC_MODE" DSC="Enable Secure mode" TIPO="ENUM" ENUM="ON_OFF" VALORE="0" DEFAULT="0" READONLY="YES"/>
+      </GROUP>
     </GROUP>
     <GROUP NAME="Set">
       <GROUP NAME="Base">
         <DATA NAME="NomeLinea" DSC="Reference name" TIPO="STRING" VALORE="......" DEFAULT="......" READONLY="YES"/>
         <DATA NAME="MB_address" DSC="Modbus address" TIPO="UBYTE" VALORE="1" DEFAULT="1" VISIBILITY="1"/>
+      </GROUP>
+      <GROUP NAME="Timers">
+        <DATA NAME="EnF81_TSc" DSC="Frequency enable delay" TIPO="TIMER" VALORE=""/>
       </GROUP>
     </GROUP>
     <GROUP NAME="Communication">
@@ -83,6 +133,10 @@
       </GROUP>
       <GROUP NAME="Parser 61850" VISIBILITY="3">
         <COMMAND NAME="MSG_GST61850" DSC="61850 Support" VISIBILITY="1"/>
+        <DATA NAME="GST61850_CMD"      DSC="61850 cmd"   TIPO="ENUM" ENUM="Gst61850_Msg" VALORE="7" DEFAULT="7" VISIBILITY="1"/>
+        <DATA NAME="GST61850_CMD_PAR1" DSC="61850 par1"  TIPO="STRING" VALORE="" VISIBILITY="1"><RANGE VALUE="100"/></DATA>
+        <DATA NAME="GST61850_CMD_PAR2" DSC="61850 par2"  TIPO="STRING" VALORE="" VISIBILITY="1"><RANGE VALUE="100"/></DATA>
+        <DATA NAME="GST61850_CMD_REPLY" DSC="61850 reply" TIPO="STRING" VALORE="" VISIBILITY="1"><RANGE VALUE="100"/></DATA>
       </GROUP>
     </GROUP>
     <GROUP NAME="Commands">
