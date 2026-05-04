@@ -38,7 +38,7 @@ func TestExportImportNoOp(t *testing.T) {
 	if err := configio.Validate(parsed, s.Template(), s.Entry().Product); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
-	report, err := configio.Apply(context.Background(), s, parsed)
+	report, err := configio.Apply(context.Background(), s, parsed, configio.ApplyOptions{})
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}

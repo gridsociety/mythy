@@ -24,6 +24,7 @@ type renderableChange struct {
 func newDiffCmd(cf *catalogFlags) *cobra.Command {
 	var conn connFlags
 	var format string
+	var noProgress bool
 
 	cmd := &cobra.Command{
 		Use:   "diff <file>",
@@ -47,7 +48,11 @@ func newDiffCmd(cf *catalogFlags) *cobra.Command {
 			if err := configio.Validate(parsed, s.Template(), s.Entry().Product); err != nil {
 				return err
 			}
-			changes, err := configio.Diff(ctx, s, parsed)
+			var progress func(done, total int, name string)
+			if !noProgress {
+				progress = makeReadProgress(cmd.ErrOrStderr(), false)
+			}
+			changes, err := configio.Diff(ctx, s, parsed, configio.DiffOptions{Progress: progress})
 			if err != nil {
 				return err
 			}
@@ -60,6 +65,7 @@ func newDiffCmd(cf *catalogFlags) *cobra.Command {
 	}
 	conn.bind(cmd)
 	cmd.Flags().StringVar(&format, "format", "", "human|json|yaml|unified (default: from MYTHY_FORMAT or human)")
+	cmd.Flags().BoolVar(&noProgress, "no-progress", false, "suppress the progress indicator (auto-suppressed when stderr isn't a TTY)")
 	return cmd
 }
 

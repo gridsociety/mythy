@@ -18,10 +18,27 @@ type Change struct {
 	File    any    // value from the YAML
 }
 
+// DiffOptions controls Diff behaviour. The zero value is fine; the
+// only knob today is Progress, which lets the caller render a
+// progress indicator across the per-key Modbus reads (Diff issues
+// one read per file entry).
+type DiffOptions struct {
+	// Progress, when non-nil, is invoked once before each Modbus
+	// read and once more at the end with done == total and name == ""
+	// to signal completion. Mirrors ExportOptions.Progress.
+	Progress func(done, total int, name string)
+}
+
 // Diff reads each settings key from the live device and compares it
 // to the file value. Only keys present in the file are checked.
 // Order is by menu path (depth-first, alphabetical fallback).
-func Diff(ctx context.Context, s *session.Session, cf *ConfigFile) ([]Change, error) {
+//
+// Diff is the read-bound phase of import: a full-device YAML
+// (~7,400 keys on PROX-VX0-e) takes the same ~4 minutes a full
+// export does, since both issue one Modbus read per entry. The
+// follow-up write phase in Apply only touches the keys that
+// actually differ.
+func Diff(ctx context.Context, s *session.Session, cf *ConfigFile, opts DiffOptions) ([]Change, error) {
 	tpl := s.Template()
 	pathByName := make(map[string]string)
 	for _, g := range tpl.Menu.WalkGroups(walkAll()) {
@@ -46,7 +63,11 @@ func Diff(ctx context.Context, s *session.Session, cf *ConfigFile) ([]Change, er
 	})
 
 	var changes []Change
-	for _, it := range items {
+	total := len(items)
+	for i, it := range items {
+		if opts.Progress != nil {
+			opts.Progress(i, total, it.name)
+		}
 		v, err := s.Read(ctx, it.name)
 		if err != nil {
 			return nil, err
@@ -60,6 +81,9 @@ func Diff(ctx context.Context, s *session.Session, cf *ConfigFile) ([]Change, er
 				File:    it.fileVal,
 			})
 		}
+	}
+	if opts.Progress != nil {
+		opts.Progress(total, total, "")
 	}
 	return changes, nil
 }

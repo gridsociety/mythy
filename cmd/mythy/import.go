@@ -12,7 +12,7 @@ import (
 
 func newImportCmd(cf *catalogFlags) *cobra.Command {
 	var conn connFlags
-	var dryRun, force bool
+	var dryRun, force, noProgress bool
 	var format string
 
 	cmd := &cobra.Command{
@@ -44,9 +44,15 @@ func newImportCmd(cf *catalogFlags) *cobra.Command {
 				}
 			}
 
+			var progress func(done, total int, name string)
+			if !noProgress {
+				progress = makeReadProgress(cmd.ErrOrStderr(), false)
+			}
+			applyOpts := configio.ApplyOptions{Progress: progress}
+
 			out := cmd.OutOrStdout()
 			if dryRun {
-				report, err := configio.ApplyDryRun(ctx, s, parsed)
+				report, err := configio.ApplyDryRun(ctx, s, parsed, applyOpts)
 				if err != nil {
 					return err
 				}
@@ -56,7 +62,7 @@ func newImportCmd(cf *catalogFlags) *cobra.Command {
 				}
 				return nil
 			}
-			report, err := configio.Apply(ctx, s, parsed)
+			report, err := configio.Apply(ctx, s, parsed, applyOpts)
 			if err != nil {
 				return err
 			}
@@ -70,6 +76,7 @@ func newImportCmd(cf *catalogFlags) *cobra.Command {
 	conn.bind(cmd)
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show what would change; perform no writes")
 	cmd.Flags().BoolVar(&force, "force", false, "skip the product-mismatch check")
+	cmd.Flags().BoolVar(&noProgress, "no-progress", false, "suppress the progress indicator (auto-suppressed when stderr isn't a TTY)")
 	cmd.Flags().StringVar(&format, "format", "", "human|json|yaml (default: from MYTHY_FORMAT)")
 	return cmd
 }

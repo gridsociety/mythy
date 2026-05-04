@@ -27,7 +27,7 @@ func TestApplyWritesOnlyChanged(t *testing.T) {
 			"MB_baudrate": "9600 baud", // unchanged
 		},
 	}
-	report, err := configio.Apply(context.Background(), s, cf)
+	report, err := configio.Apply(context.Background(), s, cf, configio.ApplyOptions{})
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestApplySkipsReadOnly(t *testing.T) {
 			"NomeLinea": "DIFFERENT", // user edited a READONLY field
 		},
 	}
-	report, err := configio.Apply(context.Background(), s, cf)
+	report, err := configio.Apply(context.Background(), s, cf, configio.ApplyOptions{})
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestApplyDryRunNoWrites(t *testing.T) {
 		Device:       configio.Device{Product: "TEST-VX0-a"},
 		Settings:     map[string]any{"MB_address": int64(5)},
 	}
-	report, err := configio.ApplyDryRun(context.Background(), s, cf)
+	report, err := configio.ApplyDryRun(context.Background(), s, cf, configio.ApplyOptions{})
 	if err != nil {
 		t.Fatalf("ApplyDryRun: %v", err)
 	}

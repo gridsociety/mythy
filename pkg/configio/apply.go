@@ -15,6 +15,13 @@ type Report struct {
 	Skipped    []string // names that Diff flagged as different but Apply refuses to write (READONLY="YES" in the catalog)
 }
 
+// ApplyOptions configures Apply / ApplyDryRun. The Progress callback
+// is forwarded to the inner Diff call so callers can render a single
+// progress UI for the whole import.
+type ApplyOptions struct {
+	Progress func(done, total int, name string)
+}
+
 // Apply computes the diff, then writes only the changed keys inside
 // one edit transaction (auto-bundled by SetMany).
 //
@@ -26,8 +33,8 @@ type Report struct {
 //
 // The product-mismatch check lives in Validate; the caller is expected
 // to have run it already (mythy import does).
-func Apply(ctx context.Context, s *session.Session, cf *ConfigFile) (*Report, error) {
-	changes, err := Diff(ctx, s, cf)
+func Apply(ctx context.Context, s *session.Session, cf *ConfigFile, opts ApplyOptions) (*Report, error) {
+	changes, err := Diff(ctx, s, cf, DiffOptions{Progress: opts.Progress})
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +73,8 @@ func Apply(ctx context.Context, s *session.Session, cf *ConfigFile) (*Report, er
 // ApplyDryRun returns the list of keys that Apply would write, plus
 // any READONLY DATA the file disagrees on (which a real Apply would
 // silently skip).
-func ApplyDryRun(ctx context.Context, s *session.Session, cf *ConfigFile) (*Report, error) {
-	changes, err := Diff(ctx, s, cf)
+func ApplyDryRun(ctx context.Context, s *session.Session, cf *ConfigFile, opts ApplyOptions) (*Report, error) {
+	changes, err := Diff(ctx, s, cf, DiffOptions{Progress: opts.Progress})
 	if err != nil {
 		return nil, err
 	}
