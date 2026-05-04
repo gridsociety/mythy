@@ -26,6 +26,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newG61850Cmd(cf))
 	root.AddCommand(newValidateCmd(cf))
 	root.AddCommand(newIdentifyCmd(cf))
+	root.AddCommand(newReadCmd(cf))
 	return root
 }
 
