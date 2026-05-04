@@ -15,7 +15,7 @@ func TestLoadCodifica(t *testing.T) {
 	if idx.Version != "2.14" {
 		t.Errorf("Version = %q, want 2.14", idx.Version)
 	}
-	if got, want := len(idx.Devices), 3; got != want {
+	if got, want := len(idx.Devices), 4; got != want {
 		t.Fatalf("Devices count = %d, want %d", got, want)
 	}
 }
@@ -53,7 +53,7 @@ func TestCodificaByIdentification(t *testing.T) {
 
 func TestCodificaByIdentificationMissing(t *testing.T) {
 	idx, _ := LoadCodifica(filepath.Join("..", "..", "testdata", "Codifica.xml"))
-	if _, err := idx.ByIdentification(99999); !errors.Is(err, ErrUnknownIdentification) {
+	if _, err := idx.ByIdentification(88888); !errors.Is(err, ErrUnknownIdentification) {
 		t.Errorf("want ErrUnknownIdentification, got %v", err)
 	}
 }
