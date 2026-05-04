@@ -54,6 +54,42 @@ func TestExportScopedYAML(t *testing.T) {
 	}
 }
 
+func TestExportFiresProgressPerLeaf(t *testing.T) {
+	// Set/Base under default filter has exactly one kept leaf
+	// (MB_address; NomeLinea is READONLY=YES so it's excluded).
+	// Progress should fire once before the read with done=0/total=1,
+	// and once at the end with done=total=1 and name="".
+	f := transport.NewFake()
+	f.OnReadHolding(6145, 1, []uint16{5})
+	s := mkSession(t, f)
+
+	type call struct {
+		done, total int
+		name        string
+	}
+	var calls []call
+
+	if _, err := configio.Export(context.Background(), s, configio.ExportOptions{
+		Scope:  "Set/Base",
+		Filter: session.ExportFilter{},
+		Progress: func(done, total int, name string) {
+			calls = append(calls, call{done, total, name})
+		},
+	}); err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	if len(calls) != 2 {
+		t.Fatalf("got %d progress calls, want 2: %+v", len(calls), calls)
+	}
+	if calls[0] != (call{done: 0, total: 1, name: "MB_address"}) {
+		t.Errorf("first call = %+v, want {0 1 MB_address}", calls[0])
+	}
+	if calls[1] != (call{done: 1, total: 1, name: ""}) {
+		t.Errorf("final call = %+v, want {1 1 \"\"}", calls[1])
+	}
+}
+
 func TestExportIncludeReadOnly(t *testing.T) {
 	f := transport.NewFake()
 	f.OnReadHolding(6145, 1, []uint16{5})
