@@ -1,0 +1,7 @@
+mythy_version: 1
+device:
+  product: TEST-VX0-a
+settings:
+  MB_address: 5
+  NomeLinea: "SAMPLE"
+  MB_baudrate: "9600 baud"

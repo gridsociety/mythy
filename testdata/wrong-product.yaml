@@ -1,0 +1,5 @@
+mythy_version: 1
+device:
+  product: SOME-OTHER-DEVICE
+settings:
+  MB_address: 5
