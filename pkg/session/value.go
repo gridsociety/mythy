@@ -20,6 +20,7 @@ type Value struct {
 	Number   int64
 	Str      string
 	Label    string
+	EnumName string // <DATA ENUM=…>, e.g. "ON_OFF"; "" for non-ENUM types
 	Compound map[string]Value
 
 	// Display metadata sourced from the catalog. Optional.

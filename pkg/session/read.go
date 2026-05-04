@@ -93,6 +93,7 @@ func (s *Session) decodeRegs(d *catalog.Data, regs []uint16) (Value, error) {
 			num = int(u)
 		}
 		v.Number = int64(num)
+		v.EnumName = d.Enum
 		if d.Enum != "" {
 			if e := s.tpl.Enums[d.Enum]; e != nil {
 				if lbl, err := e.LabelFor(num); err == nil {

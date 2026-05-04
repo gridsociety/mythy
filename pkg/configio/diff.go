@@ -66,19 +66,24 @@ func Diff(ctx context.Context, s *session.Session, cf *ConfigFile) ([]Change, er
 
 // valuesEqual is reflect.DeepEqual with int64/int/uint64 normalisation
 // so that a YAML-loaded `5` (int) compares equal to a session.ValueToYAML
-// result (`int64(5)`).
+// result (`int64(5)`). Recurses into nested maps so compound values
+// (TIMER, CONTATORE, …) round-trip cleanly.
 func valuesEqual(a, b any) bool {
-	a = normaliseInt(a)
-	b = normaliseInt(b)
-	return reflect.DeepEqual(a, b)
+	return reflect.DeepEqual(normaliseValue(a), normaliseValue(b))
 }
 
-func normaliseInt(v any) any {
+func normaliseValue(v any) any {
 	switch x := v.(type) {
 	case int:
 		return int64(x)
 	case uint64:
 		return int64(x)
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, sub := range x {
+			out[k] = normaliseValue(sub)
+		}
+		return out
 	}
 	return v
 }

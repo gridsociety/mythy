@@ -20,12 +20,17 @@ type ExportOptions struct {
 // Export reads the kept catalog leaves under opts.Scope, decodes each,
 // and emits YAML bytes following the SPEC § 4 schema. Entries are
 // emitted in depth-first menu walk order; group boundaries become
-// `# <Path>` comments so diffs are readable.
+// `# <Path>` head-comments so diffs are readable.
 //
-// Module gating: Session.EnabledModules() (Plan 3 Task 3a) probes
-// every EnableBoard_* register in the catalog once per Session and
-// caches; Export consults the cache to skip DATA tied to disabled
-// boards.
+// Module gating: Session.EnabledModules() (Plan 3 Task 3a) probes every
+// EnableBoard_* register in the catalog once per Session and caches;
+// Export consults the cache to skip DATA tied to disabled boards.
+//
+// Output format: a yaml.Node AST is built explicitly so map-key order
+// follows the menu walk (default yaml.Marshal sorts alphabetically) and
+// per-section HeadComment annotations land on the right keys. Duplicate
+// DATA NAMEs in the catalog (e.g. the same name reachable through two
+// menu paths) are deduped — the first occurrence wins.
 func Export(ctx context.Context, s *session.Session, opts ExportOptions) ([]byte, error) {
 	tpl := s.Template()
 	if tpl == nil || tpl.Menu == nil {
@@ -44,19 +49,23 @@ func Export(ctx context.Context, s *session.Session, opts ExportOptions) ([]byte
 		return nil, fmt.Errorf("module probe: %w", err)
 	}
 
-	// Walk and group by GROUP path so we can emit section comments.
 	type entry struct {
 		path  string
 		name  string
 		value any
 	}
 	var entries []entry
+	seen := make(map[string]struct{})
 
 	for _, g := range scope.WalkGroups(catalog.WalkOptions{IncludeHidden: opts.Filter.IncludeHidden, IncludeReadOnly: true}) {
 		for _, d := range g.Data {
 			if !opts.Filter.KeepData(toDataInfo(g, d), enabledModules) {
 				continue
 			}
+			if _, dup := seen[d.Name]; dup {
+				continue
+			}
+			seen[d.Name] = struct{}{}
 			v, err := s.Read(ctx, d.Name)
 			if err != nil {
 				return nil, fmt.Errorf("read %s: %w", d.Name, err)
@@ -69,51 +78,60 @@ func Export(ctx context.Context, s *session.Session, opts ExportOptions) ([]byte
 		}
 	}
 
-	id := s.Ident()
-	cf := ConfigFile{
-		MythyVersion: 1,
-		Device: Device{
-			Product:        s.Entry().Product,
-			Identification: s.Entry().Identification,
-			ExportedAt:     time.Now().Format(time.RFC3339),
-		},
-		Settings: make(map[string]any, len(entries)),
+	dev := Device{
+		Product:        s.Entry().Product,
+		Identification: s.Entry().Identification,
+		ExportedAt:     time.Now().Format(time.RFC3339),
 	}
-	if id != nil {
-		cf.Device.Identification = int(id.Identification)
-		cf.Device.SerialNumber = int64(id.SerialNumber)
-		cf.Device.FwRelease = fmt.Sprintf("%04X", id.FwRelease)
-		cf.Device.ProtocolRelease = fmt.Sprintf("%04X", id.ProtocolRelease)
-	}
-	for _, e := range entries {
-		cf.Settings[e.name] = e.value
+	if id := s.Ident(); id != nil {
+		dev.Identification = int(id.Identification)
+		dev.SerialNumber = int64(id.SerialNumber)
+		dev.FwRelease = fmt.Sprintf("%04X", id.FwRelease)
+		dev.ProtocolRelease = fmt.Sprintf("%04X", id.ProtocolRelease)
 	}
 
-	// Emit YAML manually to control key order + section comments.
+	settingsNode := &yaml.Node{Kind: yaml.MappingNode}
+	currentPath := ""
+	for _, e := range entries {
+		key := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: e.name}
+		if e.path != currentPath {
+			key.HeadComment = e.path
+			currentPath = e.path
+		}
+		valNode := &yaml.Node{}
+		if err := valNode.Encode(e.value); err != nil {
+			return nil, fmt.Errorf("encode %s: %w", e.name, err)
+		}
+		settingsNode.Content = append(settingsNode.Content, key, valNode)
+	}
+
+	devNode := &yaml.Node{}
+	if err := devNode.Encode(dev); err != nil {
+		return nil, fmt.Errorf("encode device: %w", err)
+	}
+	versionNode := &yaml.Node{}
+	if err := versionNode.Encode(1); err != nil {
+		return nil, err
+	}
+	root := &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{
+		{
+			Kind: yaml.MappingNode,
+			Content: []*yaml.Node{
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "mythy_version"}, versionNode,
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "device"}, devNode,
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "settings"}, settingsNode,
+			},
+		},
+	}}
+
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)
-	if err := enc.Encode(struct {
-		MythyVersion int    `yaml:"mythy_version"`
-		Device       Device `yaml:"device"`
-	}{1, cf.Device}); err != nil {
+	if err := enc.Encode(root); err != nil {
 		return nil, err
 	}
 	if err := enc.Close(); err != nil {
 		return nil, err
-	}
-	buf.WriteString("\nsettings:\n")
-	currentPath := ""
-	for _, e := range entries {
-		if e.path != currentPath {
-			fmt.Fprintf(&buf, "\n  # %s\n", e.path)
-			currentPath = e.path
-		}
-		val, err := yaml.Marshal(e.value)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Fprintf(&buf, "  %s: %s", e.name, string(val))
 	}
 	return buf.Bytes(), nil
 }

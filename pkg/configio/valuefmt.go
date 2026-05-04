@@ -3,6 +3,7 @@ package configio
 import (
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/gridsociety/mythy/pkg/session"
@@ -18,11 +19,17 @@ func ValueToYAML(v session.Value) any {
 	case "STRING":
 		return v.Str
 	case "ENUM", "ENUM_BYTE", "ENUM_LONG":
-		switch v.Label {
-		case "ON":
-			return true
-		case "OFF":
-			return false
+		// Bool round-trip is reserved for the ON_OFF enum specifically;
+		// other enums whose entries happen to be named "ON"/"OFF"
+		// (or that only have one of the two) stay as label strings so
+		// the import path doesn't ambiguously coerce.
+		if v.EnumName == "ON_OFF" {
+			switch v.Label {
+			case "ON":
+				return true
+			case "OFF":
+				return false
+			}
 		}
 		if v.Label != "" {
 			return v.Label
@@ -73,8 +80,20 @@ func YAMLToCodec(tipo, enumName string, in any) (any, error) {
 			return uint64(x), nil
 		case uint64:
 			return x, nil
+		case string:
+			// BIT16/BIT32/ARRAY round-trip through ValueToYAML as
+			// uppercase hex strings (e.g. "0000A5C3"). Accept either
+			// hex (with or without 0x prefix) or plain decimal.
+			s := strings.TrimPrefix(strings.TrimPrefix(x, "0x"), "0X")
+			if u, err := strconv.ParseUint(s, 16, 64); err == nil {
+				return u, nil
+			}
+			if u, err := strconv.ParseUint(x, 10, 64); err == nil {
+				return u, nil
+			}
+			return nil, fmt.Errorf("YAMLToCodec %s: %q is not a valid integer or hex string", tipo, x)
 		}
-		return nil, fmt.Errorf("YAMLToCodec %s: expected int, got %T", tipo, in)
+		return nil, fmt.Errorf("YAMLToCodec %s: expected int or hex string, got %T", tipo, in)
 	case "BYTE", "WORD", "LONG":
 		switch x := in.(type) {
 		case int64:

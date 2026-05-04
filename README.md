@@ -17,7 +17,7 @@ catalog layout, CLI surface, architecture and open questions.
 |------|-------|--------|
 | 1    | Catalog parser + codec primitives + catalog-only CLI | **complete** |
 | 2    | Modbus TCP/RTU transport + identify/read/set/commands | **complete** |
-| 3    | YAML export/import/diff | not started |
+| 3    | YAML export/import/diff + global --format + parameterized commands | **complete** |
 | 4    | G61850 port-504 framing + decode-capture + raw escape hatches polish | not started |
 
 ## Quickstart (Plan 1: catalog-only)
@@ -88,6 +88,32 @@ mythy raw write --host 192.0.2.10 --fc 6 --addr 0x3C2F --value 2
 
 # RTU
 mythy identify --serial /dev/ttyUSB0 --baud 19200 --parity N --stopbits 1
+```
+
+## Configuration I/O (Plan 3)
+
+```bash
+# Snapshot a device's settings to a YAML file
+mythy export --host 192.0.2.10 sample-2026-04-30.yaml
+
+# Compare a file to the live device (default human; --format=unified for diff -u style)
+mythy diff --host 192.0.2.10 sample-2026-04-30.yaml
+mythy diff --host 192.0.2.10 --format=unified sample-2026-04-30.yaml
+
+# Apply changes (one edit transaction wraps every WREG write)
+mythy import --host 192.0.2.10 --dry-run sample-2026-04-30.yaml
+mythy import --host 192.0.2.10 sample-2026-04-30.yaml
+
+# Cross-device migration: same product → just import. Different product → --force.
+
+# Parameterized device commands (e.g. set the RTC):
+mythy command invoke --host 192.0.2.10 SET_RTC \
+  --arg RTCDay=30 --arg RTCMonth=4 --arg RTCYear=26 \
+  --arg RTCHour=12 --arg RTCMinute=0 --arg RTCSecond=0
+
+# Global output format (also: --json / --yaml aliases, MYTHY_FORMAT env)
+mythy identify --host 192.0.2.10 --format=json
+mythy read --host 192.0.2.10 --scope Read/Measures --format=yaml
 ```
 
 ## Build

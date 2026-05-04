@@ -30,13 +30,18 @@ func TestValueToYAMLEnumLabel(t *testing.T) {
 }
 
 func TestValueToYAMLOnOffAsBool(t *testing.T) {
-	on := session.Value{Tipo: "ENUM", Label: "ON"}
-	off := session.Value{Tipo: "ENUM", Label: "OFF"}
+	on := session.Value{Tipo: "ENUM", Label: "ON", EnumName: "ON_OFF"}
+	off := session.Value{Tipo: "ENUM", Label: "OFF", EnumName: "ON_OFF"}
 	if got := configio.ValueToYAML(on); got != true {
 		t.Errorf("ON → %v, want true", got)
 	}
 	if got := configio.ValueToYAML(off); got != false {
 		t.Errorf("OFF → %v, want false", got)
+	}
+	// A non-ON_OFF enum that happens to have an "ON" label stays as a string.
+	other := session.Value{Tipo: "ENUM", Label: "ON", EnumName: "F59N_EnumDa74VT"}
+	if got := configio.ValueToYAML(other); got != "ON" {
+		t.Errorf("non-ON_OFF ENUM with Label ON → %v, want %q", got, "ON")
 	}
 }
 
