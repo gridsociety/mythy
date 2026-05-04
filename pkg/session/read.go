@@ -6,7 +6,6 @@ import (
 
 	"github.com/gridsociety/mythy/pkg/catalog"
 	"github.com/gridsociety/mythy/pkg/codec"
-	"github.com/gridsociety/mythy/pkg/transport"
 )
 
 // Read looks up the named DATA leaf in the catalog, issues the matching
@@ -143,9 +142,21 @@ func (s *Session) decodeRegs(d *catalog.Data, regs []uint16) (Value, error) {
 	return v, nil
 }
 
-// ReadScope walks the catalog under path, batch-reads every leaf,
-// and returns a map keyed by DATA NAME. Hidden groups (VISIBILITY="3")
-// are skipped unless includeHidden.
+// ReadScope walks the catalog under path and reads every kept leaf,
+// returning a map keyed by DATA NAME. Hidden groups (VISIBILITY="3")
+// are skipped unless includeHidden; module-disabled DATA is dropped
+// (audit B6).
+//
+// Implementation note: each leaf is read with one Modbus request at
+// the catalog-declared (addr, qty). Thytronic firmware enforces
+// strict register-window boundaries — empirically (against a
+// production XV10P) reads with qty != the declared dim, or at any
+// non-declared offset, return Modbus exception 0x03 (illegal data
+// value). Even reading a single register inside an INFO_MISURA block
+// at +1 offset fails. Coalescing-merge optimisations (rospo's
+// MergeRanges, SPEC § 5.3) are therefore unsafe for this device
+// family. The 7,411-leaf full-device read takes ~30 s on LAN; that's
+// the cost of correctness.
 func (s *Session) ReadScope(ctx context.Context, path string, includeHidden bool) (map[string]Value, error) {
 	if s.tpl == nil || s.tpl.Menu == nil {
 		return nil, fmt.Errorf("session: no template loaded")
@@ -163,64 +174,20 @@ func (s *Session) ReadScope(ctx context.Context, path string, includeHidden bool
 	if err != nil {
 		return nil, err
 	}
-	kept := leaves[:0]
+
+	out := make(map[string]Value, len(leaves))
 	for _, d := range leaves {
 		if d.Module != "" && enabled != nil && !enabled[d.Module] {
 			continue
 		}
-		kept = append(kept, d)
-	}
-	leaves = kept
-
-	plans := make([]transport.RangePlan, 0, len(leaves))
-	type slot struct {
-		d    *catalog.Data
-		addr int
-		qty  int
-	}
-	slots := make([]slot, 0, len(leaves))
-	for _, d := range leaves {
 		if d.Message == nil || d.Message.FC() == 0 {
 			continue
 		}
-		fc := uint8(d.Message.FC())
-		addr := uint16(d.Message.WireAddr())
-		qty := uint16(d.Message.Dim)
-		plans = append(plans, transport.RangePlan{FC: fc, StartAddr: addr, Count: qty})
-		slots = append(slots, slot{d: d, addr: int(addr), qty: int(qty)})
-	}
-	merged := transport.MergeRanges(plans, transport.MergeOptions{})
-
-	// Issue each batch and stash regs in a (FC, addr) → reg map for slicing.
-	got := make(map[uint8]map[int]uint16)
-	for _, b := range merged {
-		regs, err := s.readRegs(ctx, int(b.FC), b.StartAddr, b.Count)
+		v, err := s.readData(ctx, d)
 		if err != nil {
-			return nil, s.mapErr(err)
+			return nil, fmt.Errorf("read %s: %w", d.Name, err)
 		}
-		fcMap, ok := got[b.FC]
-		if !ok {
-			fcMap = make(map[int]uint16, len(regs))
-			got[b.FC] = fcMap
-		}
-		for i, r := range regs {
-			fcMap[int(b.StartAddr)+i] = r
-		}
-	}
-
-	// Slice each leaf's window out of the captured registers.
-	out := make(map[string]Value, len(slots))
-	for _, sl := range slots {
-		fc := uint8(sl.d.Message.FC())
-		regs := make([]uint16, sl.qty)
-		for i := 0; i < sl.qty; i++ {
-			regs[i] = got[fc][sl.addr+i]
-		}
-		v, err := s.decodeRegs(sl.d, regs)
-		if err != nil {
-			return nil, fmt.Errorf("decode %s: %w", sl.d.Name, err)
-		}
-		out[sl.d.Name] = v
+		out[d.Name] = v
 	}
 	return out, nil
 }
