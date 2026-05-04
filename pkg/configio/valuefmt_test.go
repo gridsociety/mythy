@@ -45,6 +45,24 @@ func TestValueToYAMLOnOffAsBool(t *testing.T) {
 	}
 }
 
+func TestValueToYAMLArrayFromRaw(t *testing.T) {
+	// ARRAY (SPEC § 2.10) has no fixed width — render every register's
+	// bytes (high then low) as uppercase hex. Example: a 3-reg MAC.
+	v := session.Value{Tipo: "ARRAY", Raw: []uint16{0x0011, 0x2233, 0xAABB}}
+	if got := configio.ValueToYAML(v); got != "00112233AABB" {
+		t.Errorf("got %v, want %q", got, "00112233AABB")
+	}
+}
+
+func TestValueToYAMLUnknownTipoFromRaw(t *testing.T) {
+	// Forward-compatibility: a TIPO mythy doesn't model individually
+	// arrives with Raw populated; render as hex rather than erroring.
+	v := session.Value{Tipo: "FUTURE_TIPO", Raw: []uint16{0xDEAD, 0xBEEF}}
+	if got := configio.ValueToYAML(v); got != "DEADBEEF" {
+		t.Errorf("got %v, want %q", got, "DEADBEEF")
+	}
+}
+
 func TestValueToYAMLCompound(t *testing.T) {
 	v := session.Value{
 		Tipo: "TIMER",

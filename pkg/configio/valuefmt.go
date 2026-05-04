@@ -43,8 +43,14 @@ func ValueToYAML(v session.Value) any {
 		}
 		return out
 	}
+	// Opaque or fixed-width-bitfield TIPOs render as uppercase hex.
+	// ARRAY (SPEC § 2.10) and any other unmodelled TIPO arrive with
+	// Raw populated by Session.readData; render the actual bytes.
+	// BIT16 / BIT32 still pack into the int64 Number — render that.
+	if v.Raw != nil {
+		return hexFromRaw(v.Raw)
+	}
 	if strings.HasPrefix(v.Tipo, "BIT") || v.Tipo == "ARRAY" {
-		// Render as uppercase hex.
 		return hexFromInt(v.Number)
 	}
 	return v.Number
@@ -56,6 +62,18 @@ func hexFromInt(n int64) string {
 	b[1] = byte(n >> 16)
 	b[2] = byte(n >> 8)
 	b[3] = byte(n)
+	return strings.ToUpper(hex.EncodeToString(b))
+}
+
+// hexFromRaw concatenates every register's bytes (high byte then low,
+// matching Modbus on-the-wire order) and returns the uppercase hex
+// string. A 6-byte MAC (3 regs) renders as 12 hex chars.
+func hexFromRaw(regs []uint16) string {
+	b := make([]byte, len(regs)*2)
+	for i, r := range regs {
+		b[2*i] = byte(r >> 8)
+		b[2*i+1] = byte(r & 0xFF)
+	}
 	return strings.ToUpper(hex.EncodeToString(b))
 }
 

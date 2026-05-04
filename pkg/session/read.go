@@ -102,10 +102,14 @@ func (s *Session) decodeRegs(d *catalog.Data, regs []uint16) (Value, error) {
 			}
 		}
 	default:
-		// Compound: walk the CLASS layout.
+		// Compound: walk the CLASS layout when the TIPO is registered.
 		cls, ok := s.tpl.Classes[d.Tipo]
 		if !ok {
-			return v, fmt.Errorf("readData(%s): unknown TIPO %q", d.Name, d.Tipo)
+			// ARRAY (SPEC § 2.10) and any other TIPO mythy doesn't model
+			// individually are kept as opaque raw register bytes. Renderers
+			// emit them as hex; round-trip writes are not supported in v1.
+			v.Raw = append([]uint16(nil), regs...)
+			return v, nil
 		}
 		fields, err := codec.DecodeCompound(regs, cls, s.tpl.Enums)
 		if err != nil {

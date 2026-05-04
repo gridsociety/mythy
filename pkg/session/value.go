@@ -20,7 +20,8 @@ type Value struct {
 	Number   int64
 	Str      string
 	Label    string
-	EnumName string // <DATA ENUM=…>, e.g. "ON_OFF"; "" for non-ENUM types
+	EnumName string   // <DATA ENUM=…>, e.g. "ON_OFF"; "" for non-ENUM types
+	Raw      []uint16 // populated for ARRAY and any TIPO without a known decoder
 	Compound map[string]Value
 
 	// Display metadata sourced from the catalog. Optional.
