@@ -108,3 +108,33 @@ func TestYAMLToCodec_StringPassthrough(t *testing.T) {
 		t.Errorf("got %v", out)
 	}
 }
+
+func TestYAMLToCodec_ArrayHexRoundTrip(t *testing.T) {
+	// "00112233AABB" → 3 regs (high-byte-first per Modbus): 0x0011, 0x2233, 0xAABB.
+	out, err := configio.YAMLToCodec("ARRAY", "", "00112233AABB")
+	if err != nil {
+		t.Fatalf("ARRAY hex: %v", err)
+	}
+	regs, ok := out.([]uint16)
+	if !ok {
+		t.Fatalf("got %T %v, want []uint16", out, out)
+	}
+	want := []uint16{0x0011, 0x2233, 0xAABB}
+	if len(regs) != len(want) {
+		t.Fatalf("len = %d, want %d", len(regs), len(want))
+	}
+	for i, w := range want {
+		if regs[i] != w {
+			t.Errorf("regs[%d] = 0x%04X, want 0x%04X", i, regs[i], w)
+		}
+	}
+}
+
+func TestYAMLToCodec_ArrayRejectsOddHex(t *testing.T) {
+	if _, err := configio.YAMLToCodec("ARRAY", "", "ABC"); err == nil {
+		t.Error("3-char hex must fail (must be a multiple of 4)")
+	}
+	if _, err := configio.YAMLToCodec("ARRAY", "", "AB"); err == nil {
+		t.Error("2-char hex must fail (less than one full register)")
+	}
+}

@@ -173,7 +173,16 @@ func (s *Session) encodeForWrite(d *catalog.Data, value any) ([]uint16, error) {
 		}
 		return codec.EncodeCompound(m, cls, s.tpl.Enums)
 	}
-	return nil, fmt.Errorf("set %s: unsupported TIPO %q", d.Name, d.Tipo)
+	// ARRAY (and any other unmodelled TIPO that arrives as a raw
+	// register slice from configio.YAMLToCodec): pass through after
+	// validating the length matches the catalog dim.
+	if regs, ok := value.([]uint16); ok {
+		if len(regs) != d.Message.Dim {
+			return nil, fmt.Errorf("set %s: TIPO=%s expects %d regs, got %d", d.Name, d.Tipo, d.Message.Dim, len(regs))
+		}
+		return regs, nil
+	}
+	return nil, fmt.Errorf("set %s: unsupported TIPO %q (value type %T)", d.Name, d.Tipo, value)
 }
 
 func encodeStringRegs(str string, dim int) []uint16 {

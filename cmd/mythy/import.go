@@ -51,6 +51,9 @@ func newImportCmd(cf *catalogFlags) *cobra.Command {
 					return err
 				}
 				fmt.Fprintf(out, "would write %d key(s): %v\n", len(report.WouldApply), report.WouldApply)
+				if len(report.Skipped) > 0 {
+					fmt.Fprintf(out, "would skip %d READONLY key(s): %v\n", len(report.Skipped), report.Skipped)
+				}
 				return nil
 			}
 			report, err := configio.Apply(ctx, s, parsed)
@@ -58,6 +61,9 @@ func newImportCmd(cf *catalogFlags) *cobra.Command {
 				return err
 			}
 			fmt.Fprintf(out, "wrote %d key(s): %v\n", len(report.Applied), report.Applied)
+			if len(report.Skipped) > 0 {
+				fmt.Fprintf(out, "skipped %d READONLY key(s) the file changed: %v\n", len(report.Skipped), report.Skipped)
+			}
 			return nil
 		},
 	}

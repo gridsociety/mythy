@@ -149,10 +149,36 @@ func YAMLToCodec(tipo, enumName string, in any) (any, error) {
 			return int64(x), nil
 		}
 		return nil, fmt.Errorf("YAMLToCodec ENUM: expected string/bool/int, got %T", in)
+	case "ARRAY":
+		// Round-trip with ValueToYAML's uppercase hex form.
+		s, ok := in.(string)
+		if !ok {
+			return nil, fmt.Errorf("YAMLToCodec ARRAY: expected hex string, got %T", in)
+		}
+		return decodeHexToRegs(s)
 	}
 	// Compound (TIMER, RELE, …) — caller passes a nested map.
 	if m, ok := in.(map[string]any); ok {
 		return m, nil
 	}
 	return nil, fmt.Errorf("YAMLToCodec: unsupported tipo %q (value type %T)", tipo, in)
+}
+
+// decodeHexToRegs parses an even-byte hex string (with or without
+// 0x prefix, case-insensitive) into a slice of big-endian Modbus
+// register words.
+func decodeHexToRegs(s string) ([]uint16, error) {
+	clean := strings.TrimPrefix(strings.TrimPrefix(s, "0x"), "0X")
+	if len(clean)%4 != 0 {
+		return nil, fmt.Errorf("ARRAY hex must encode whole 16-bit registers (multiple of 4 hex chars), got %d", len(clean))
+	}
+	bytes, err := hex.DecodeString(clean)
+	if err != nil {
+		return nil, fmt.Errorf("ARRAY hex decode: %w", err)
+	}
+	regs := make([]uint16, len(bytes)/2)
+	for i := range regs {
+		regs[i] = uint16(bytes[2*i])<<8 | uint16(bytes[2*i+1])
+	}
+	return regs, nil
 }

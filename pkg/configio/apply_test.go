@@ -39,6 +39,40 @@ func TestApplyWritesOnlyChanged(t *testing.T) {
 	}
 }
 
+func TestApplySkipsReadOnly(t *testing.T) {
+	// NomeLinea is READONLY=YES in the fixture. A YAML that disagrees
+	// must NOT trigger a write — Apply puts the name in Report.Skipped
+	// and never asks the transport to write it. Without this guard a
+	// hand-edited --include-readonly export would FC16 a register the
+	// device may not even accept.
+	f := transport.NewFake()
+	// Diff reads NomeLinea to detect divergence (FC03 wire 6199, dim=10).
+	// "SAMPLE" packed: 0x5341 0x4D50 0x4C45 then NULs.
+	f.OnReadHolding(6199, 10, append([]uint16{0x5341, 0x4D50, 0x4C45}, make([]uint16, 7)...))
+	s := mkSession(t, f)
+
+	cf := &configio.ConfigFile{
+		MythyVersion: 1,
+		Device:       configio.Device{Product: "TEST-VX0-a"},
+		Settings: map[string]any{
+			"NomeLinea": "DIFFERENT", // user edited a READONLY field
+		},
+	}
+	report, err := configio.Apply(context.Background(), s, cf)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if len(report.Applied) != 0 {
+		t.Errorf("Applied = %v, want []", report.Applied)
+	}
+	if len(report.Skipped) != 1 || report.Skipped[0] != "NomeLinea" {
+		t.Errorf("Skipped = %v, want [NomeLinea]", report.Skipped)
+	}
+	if len(f.Writes) != 0 {
+		t.Errorf("READONLY skip must not write; got %+v", f.Writes)
+	}
+}
+
 func TestApplyDryRunNoWrites(t *testing.T) {
 	f := transport.NewFake()
 	f.OnReadHolding(6145, 1, []uint16{1})
