@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -20,7 +21,7 @@ func TestNewRTUClientDefaults(t *testing.T) {
 
 func TestNewRTUClientNoDevice(t *testing.T) {
 	c := NewRTUClient(Options{})
-	if err := c.Open(nil); err == nil || !strings.Contains(err.Error(), "SerialDevice") {
+	if err := c.Open(context.TODO()); err == nil || !strings.Contains(err.Error(), "SerialDevice") {
 		t.Errorf("Open with no SerialDevice should error, got %v", err)
 	}
 }

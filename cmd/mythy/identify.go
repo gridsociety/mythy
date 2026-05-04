@@ -12,7 +12,7 @@ func newIdentifyCmd(cf *catalogFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "identify",
 		Short: "Connect to a device, run discovery, print identification + secure-mode state",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
 			s, err := conn.build(ctx, cf)
 			if err != nil {

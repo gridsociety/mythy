@@ -23,7 +23,7 @@ func newCommandListCmd(cf *catalogFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List every <COMMAND> entry in the catalog",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			tpl, _, err := cf.load()
 			if err != nil {
 				return err

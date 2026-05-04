@@ -14,7 +14,7 @@ func newClockSetCmd(cf *catalogFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "clock-set",
 		Short: "Set the device RTC (default: now)",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			t := time.Now()
 			if atRFC != "" {
 				parsed, err := time.Parse(time.RFC3339, atRFC)

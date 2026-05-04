@@ -149,9 +149,9 @@ func (s *Session) encodeForWrite(d *catalog.Data, value any) ([]uint16, error) {
 		if !ok {
 			return nil, fmt.Errorf("set %s: STRING needs string, got %T", d.Name, value)
 		}
-		max := d.Message.Dim * 2
-		if len(str) > max {
-			return nil, fmt.Errorf("set %s: string %q exceeds %d-char limit", d.Name, str, max)
+		maxLen := d.Message.Dim * 2
+		if len(str) > maxLen {
+			return nil, fmt.Errorf("set %s: string %q exceeds %d-char limit", d.Name, str, maxLen)
 		}
 		return encodeStringRegs(str, d.Message.Dim), nil
 	case "ENUM", "ENUM_BYTE", "ENUM_LONG":
@@ -216,20 +216,20 @@ func (s *Session) resolveEnumWriteValue(d *catalog.Data, value any) (int, error)
 	return asAnyInt(value)
 }
 
-func asUint(value any, max uint64) (uint64, error) {
+func asUint(value any, maxVal uint64) (uint64, error) {
 	switch v := value.(type) {
 	case uint64:
-		if v > max {
-			return 0, fmt.Errorf("value %d exceeds limit %d", v, max)
+		if v > maxVal {
+			return 0, fmt.Errorf("value %d exceeds limit %d", v, maxVal)
 		}
 		return v, nil
 	case int64:
-		if v < 0 || uint64(v) > max {
-			return 0, fmt.Errorf("value %d out of [0,%d]", v, max)
+		if v < 0 || uint64(v) > maxVal {
+			return 0, fmt.Errorf("value %d out of [0,%d]", v, maxVal)
 		}
 		return uint64(v), nil
 	case int:
-		return asUint(int64(v), max)
+		return asUint(int64(v), maxVal)
 	}
 	return 0, fmt.Errorf("unsupported value type %T", value)
 }

@@ -13,7 +13,7 @@ func newRebootCmd(cf *catalogFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reboot",
 		Short: "Restart the device (= G61850 RestartDevice)",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
 			s, err := conn.build(ctx, cf)
 			if err != nil {

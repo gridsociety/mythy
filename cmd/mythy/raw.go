@@ -63,7 +63,7 @@ func newRawReadCmd(cf *catalogFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "read --fc 3|4 --addr N [--qty K]",
 		Short: "Raw FC03/FC04 read",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if qty == 0 {
 				qty = 1
 			}
@@ -108,7 +108,7 @@ func newRawWriteCmd(cf *catalogFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "write --fc 6|16 --addr N --value V[,V…]",
 		Short: "Raw FC06/FC16 write",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			parts := strings.Split(value, ",")
 			vals := make([]uint16, 0, len(parts))
 			for _, p := range parts {

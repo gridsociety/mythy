@@ -20,7 +20,7 @@ func newListCmd(cf *catalogFlags) *cobra.Command {
 		Long: `Print every <DATA> leaf in the catalog as one line:
   <menu/path>  <NAME>  [<DSC>]  [<TIPO>]  [r/w]
 Use --scope to restrict to a subtree.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			tpl, _, err := cf.load()
 			if err != nil {
 				return err

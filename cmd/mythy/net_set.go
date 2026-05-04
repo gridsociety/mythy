@@ -14,7 +14,7 @@ func newNetSetCmd(cf *catalogFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "net-set --ip … --netmask … --gateway …",
 		Short: "Set Ethernet IPv4 parameters (SET_PARAMS_ETH0)",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if ip == "" || netmask == "" || gateway == "" {
 				return fmt.Errorf("net-set requires --ip, --netmask, --gateway")
 			}

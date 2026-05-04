@@ -22,7 +22,7 @@ func newG61850ListCmd(cf *catalogFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "Print the device's Gst61850_Msg enum (supported parser functions)",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			tpl, entry, err := cf.load()
 			if err != nil {
 				return err

@@ -69,10 +69,7 @@ func IsTransient(err error) bool {
 		return false
 	}
 	var me *ModbusException
-	if errors.As(err, &me) {
-		return false
-	}
-	return true
+	return !errors.As(err, &me)
 }
 
 // RangePlan is one batched Modbus read request, produced by MergeRanges.

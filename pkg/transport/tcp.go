@@ -34,7 +34,7 @@ func NewTCPClient(opts Options) *TCPClient {
 }
 
 // Open establishes the TCP connection.
-func (c *TCPClient) Open(ctx context.Context) error {
+func (c *TCPClient) Open(_ context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.client != nil {

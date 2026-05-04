@@ -12,7 +12,7 @@ import (
 // to uint64 (unsigned) or int64 (signed). Strings decode to Go strings.
 // Inline-enum sub-fields decode to their resolved label (string), or fall
 // back to the numeric value if the label is missing.
-func DecodeCompound(regs []uint16, cls *catalog.Class, enums map[string]*catalog.Enum) (map[string]any, error) {
+func DecodeCompound(regs []uint16, cls *catalog.Class, _ map[string]*catalog.Enum) (map[string]any, error) {
 	if cls == nil {
 		return nil, fmt.Errorf("DecodeCompound: nil class")
 	}
@@ -27,7 +27,7 @@ func DecodeCompound(regs []uint16, cls *catalog.Class, enums map[string]*catalog
 			return nil, fmt.Errorf("DecodeCompound: %s wants %d regs starting at %d, have %d", v.Name, w, cursor, len(regs))
 		}
 		slice := regs[cursor : cursor+w]
-		val, err := decodeVar(v, slice, enums)
+		val, err := decodeVar(v, slice)
 		if err != nil {
 			return nil, fmt.Errorf("decode %s: %w", v.Name, err)
 		}
@@ -38,7 +38,7 @@ func DecodeCompound(regs []uint16, cls *catalog.Class, enums map[string]*catalog
 }
 
 // EncodeCompound is the inverse of DecodeCompound. Used by Set.
-func EncodeCompound(values map[string]any, cls *catalog.Class, enums map[string]*catalog.Enum) ([]uint16, error) {
+func EncodeCompound(values map[string]any, cls *catalog.Class, _ map[string]*catalog.Enum) ([]uint16, error) {
 	if cls == nil {
 		return nil, fmt.Errorf("EncodeCompound: nil class")
 	}
@@ -52,7 +52,7 @@ func EncodeCompound(values map[string]any, cls *catalog.Class, enums map[string]
 		if !ok {
 			val = nil
 		}
-		regs, err := encodeVar(v, val, enums, w)
+		regs, err := encodeVar(v, val, w)
 		if err != nil {
 			return nil, fmt.Errorf("encode %s: %w", v.Name, err)
 		}
@@ -77,7 +77,7 @@ func varWidth(v catalog.ClassVar) int {
 	return 0
 }
 
-func decodeVar(v catalog.ClassVar, regs []uint16, enums map[string]*catalog.Enum) (any, error) {
+func decodeVar(v catalog.ClassVar, regs []uint16) (any, error) {
 	switch strings.ToUpper(v.Tipo) {
 	case "BYTE":
 		return int64(int8(regs[0] & 0xFF)), nil
@@ -98,15 +98,15 @@ func decodeVar(v catalog.ClassVar, regs []uint16, enums map[string]*catalog.Enum
 	case "STRING":
 		return DecodeSTRING(regs)
 	case "ENUM", "ENUM_BYTE":
-		return resolveEnum(int(regs[0]), v, enums), nil
+		return resolveEnum(int(regs[0]), v), nil
 	case "ENUM_LONG":
 		u, _ := DecodeULONG(regs)
-		return resolveEnum(int(u), v, enums), nil
+		return resolveEnum(int(u), v), nil
 	}
 	return nil, fmt.Errorf("decodeVar: unknown TIPO %q", v.Tipo)
 }
 
-func resolveEnum(num int, v catalog.ClassVar, enums map[string]*catalog.Enum) any {
+func resolveEnum(num int, v catalog.ClassVar) any {
 	if v.InlineEnum != nil {
 		if lbl, err := v.InlineEnum.LabelFor(num); err == nil {
 			return lbl
@@ -115,7 +115,7 @@ func resolveEnum(num int, v catalog.ClassVar, enums map[string]*catalog.Enum) an
 	return int64(num)
 }
 
-func encodeVar(v catalog.ClassVar, val any, enums map[string]*catalog.Enum, width int) ([]uint16, error) {
+func encodeVar(v catalog.ClassVar, val any, width int) ([]uint16, error) {
 	if val == nil {
 		return make([]uint16, width), nil
 	}
@@ -138,9 +138,9 @@ func encodeVar(v catalog.ClassVar, val any, enums map[string]*catalog.Enum, widt
 		s, _ := val.(string)
 		return encodeStringChars(s, width), nil
 	case "ENUM", "ENUM_BYTE":
-		return []uint16{uint16(enumNum(val, v, enums) & 0xFFFF)}, nil
+		return []uint16{uint16(enumNum(val, v) & 0xFFFF)}, nil
 	case "ENUM_LONG":
-		u := uint64(enumNum(val, v, enums))
+		u := uint64(enumNum(val, v))
 		return []uint16{uint16(u & 0xFFFF), uint16((u >> 16) & 0xFFFF)}, nil
 	}
 	return nil, fmt.Errorf("encodeVar: unknown TIPO %q", v.Tipo)
@@ -170,7 +170,7 @@ func toUint64(v any) uint64 {
 	return 0
 }
 
-func enumNum(val any, v catalog.ClassVar, enums map[string]*catalog.Enum) int {
+func enumNum(val any, v catalog.ClassVar) int {
 	switch x := val.(type) {
 	case string:
 		if v.InlineEnum != nil {
@@ -192,9 +192,9 @@ func enumNum(val any, v catalog.ClassVar, enums map[string]*catalog.Enum) int {
 // approximated as `width*2`; values longer than that are truncated.
 func encodeStringChars(s string, width int) []uint16 {
 	out := make([]uint16, width)
-	max := width * 2
-	if len(s) > max {
-		s = s[:max]
+	maxBytes := width * 2
+	if len(s) > maxBytes {
+		s = s[:maxBytes]
 	}
 	for i := 0; i < len(s); i += 2 {
 		hi := byte(s[i])
