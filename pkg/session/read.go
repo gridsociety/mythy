@@ -6,6 +6,7 @@ import (
 
 	"github.com/gridsociety/mythy/pkg/catalog"
 	"github.com/gridsociety/mythy/pkg/codec"
+	"github.com/gridsociety/mythy/pkg/transport"
 )
 
 // Read looks up the named DATA leaf in the catalog, issues the matching
@@ -140,4 +141,73 @@ func (s *Session) decodeRegs(d *catalog.Data, regs []uint16) (Value, error) {
 		}
 	}
 	return v, nil
+}
+
+// ReadScope walks the catalog under path, batch-reads every leaf,
+// and returns a map keyed by DATA NAME. Hidden groups (VISIBILITY="3")
+// are skipped unless includeHidden.
+func (s *Session) ReadScope(ctx context.Context, path string, includeHidden bool) (map[string]Value, error) {
+	if s.tpl == nil || s.tpl.Menu == nil {
+		return nil, fmt.Errorf("session: no template loaded")
+	}
+	scope := s.tpl.Menu
+	if path != "" {
+		scope = scope.FindGroup(path)
+		if scope == nil {
+			return nil, fmt.Errorf("scope %q not found", path)
+		}
+	}
+	leaves := scope.WalkData(catalog.WalkOptions{IncludeHidden: includeHidden, IncludeReadOnly: true})
+
+	plans := make([]transport.RangePlan, 0, len(leaves))
+	type slot struct {
+		d    *catalog.Data
+		addr int
+		qty  int
+	}
+	slots := make([]slot, 0, len(leaves))
+	for _, d := range leaves {
+		if d.Message == nil || d.Message.FC() == 0 {
+			continue
+		}
+		fc := uint8(d.Message.FC())
+		addr := uint16(d.Message.WireAddr())
+		qty := uint16(d.Message.Dim)
+		plans = append(plans, transport.RangePlan{FC: fc, StartAddr: addr, Count: qty})
+		slots = append(slots, slot{d: d, addr: int(addr), qty: int(qty)})
+	}
+	merged := transport.MergeRanges(plans, transport.MergeOptions{})
+
+	// Issue each batch and stash regs in a (FC, addr) → reg map for slicing.
+	got := make(map[uint8]map[int]uint16)
+	for _, b := range merged {
+		regs, err := s.readRegs(ctx, int(b.FC), b.StartAddr, b.Count)
+		if err != nil {
+			return nil, s.mapErr(err)
+		}
+		fcMap, ok := got[b.FC]
+		if !ok {
+			fcMap = make(map[int]uint16, len(regs))
+			got[b.FC] = fcMap
+		}
+		for i, r := range regs {
+			fcMap[int(b.StartAddr)+i] = r
+		}
+	}
+
+	// Slice each leaf's window out of the captured registers.
+	out := make(map[string]Value, len(slots))
+	for _, sl := range slots {
+		fc := uint8(sl.d.Message.FC())
+		regs := make([]uint16, sl.qty)
+		for i := 0; i < sl.qty; i++ {
+			regs[i] = got[fc][sl.addr+i]
+		}
+		v, err := s.decodeRegs(sl.d, regs)
+		if err != nil {
+			return nil, fmt.Errorf("decode %s: %w", sl.d.Name, err)
+		}
+		out[sl.d.Name] = v
+	}
+	return out, nil
 }
