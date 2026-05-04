@@ -17,7 +17,8 @@ type Session struct {
 	t       transport.Transport
 	tpl     *catalog.Template
 	entry   catalog.DeviceEntry
-	secMode bool // populated by Identify (Task 10); read of ENABLE_SEC_MODE
+	ident   *Identification // populated by Identify (Task 10)
+	secMode bool            // populated by Identify (Task 10); read of ENABLE_SEC_MODE
 
 	mu      sync.Mutex
 	txnOpen bool
