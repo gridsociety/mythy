@@ -27,19 +27,34 @@ type connFlags struct {
 	retries       int
 }
 
+// bind registers the connection flags. Each flag's default is sourced
+// from MYTHY_<NAME> if set (e.g. MYTHY_HOST, MYTHY_REQUEST_TIMEOUT),
+// matching the precedent of MYTHY_TEMPLATES / MYTHY_LOCALE / MYTHY_FORMAT.
+// CLI flags still win over env vars.
 func (c *connFlags) bind(cmd *cobra.Command) {
 	f := cmd.PersistentFlags()
-	f.StringVar(&c.transportKind, "transport", "", "tcp or rtu (auto from --host or --serial if unset)")
-	f.StringVar(&c.host, "host", "", "TCP host:port-less host, e.g. 192.0.2.10")
-	f.Uint16Var(&c.port, "port", 502, "TCP port (default 502, IANA-registered Modbus TCP)")
-	f.StringVar(&c.serialDev, "serial", "", "serial device path, e.g. /dev/ttyUSB0")
-	f.UintVar(&c.baud, "baud", 19200, "RTU baud rate")
-	f.StringVar(&c.parity, "parity", "N", "RTU parity: N, E, O")
-	f.UintVar(&c.stopBits, "stopbits", 1, "RTU stop bits: 1 or 2")
-	f.Uint8Var(&c.unitID, "unit-id", 1, "Modbus unit ID (default 1)")
-	f.DurationVar(&c.timeout, "request-timeout", 2*time.Second, "per-request timeout")
-	f.DurationVar(&c.connTimeout, "connect-timeout", 5*time.Second, "TCP connect timeout")
-	f.IntVar(&c.retries, "retries", 2, "transient-error retries on reads (writes never retry)")
+	f.StringVar(&c.transportKind, "transport", envOrString("MYTHY_TRANSPORT", ""),
+		"tcp or rtu (auto from --host or --serial if unset; or set MYTHY_TRANSPORT)")
+	f.StringVar(&c.host, "host", envOrString("MYTHY_HOST", ""),
+		"TCP host, e.g. 192.0.2.10 (or set MYTHY_HOST)")
+	f.Uint16Var(&c.port, "port", envOrUint16("MYTHY_PORT", 502),
+		"TCP port (default 502, IANA-registered Modbus TCP; or set MYTHY_PORT)")
+	f.StringVar(&c.serialDev, "serial", envOrString("MYTHY_SERIAL", ""),
+		"serial device path, e.g. /dev/ttyUSB0 (or set MYTHY_SERIAL)")
+	f.UintVar(&c.baud, "baud", envOrUint("MYTHY_BAUD", 19200),
+		"RTU baud rate (or set MYTHY_BAUD)")
+	f.StringVar(&c.parity, "parity", envOrString("MYTHY_PARITY", "N"),
+		"RTU parity: N, E, O (or set MYTHY_PARITY)")
+	f.UintVar(&c.stopBits, "stopbits", envOrUint("MYTHY_STOPBITS", 1),
+		"RTU stop bits: 1 or 2 (or set MYTHY_STOPBITS)")
+	f.Uint8Var(&c.unitID, "unit-id", envOrUint8("MYTHY_UNIT_ID", 1),
+		"Modbus unit ID (default 1; or set MYTHY_UNIT_ID)")
+	f.DurationVar(&c.timeout, "request-timeout", envOrDuration("MYTHY_REQUEST_TIMEOUT", 2*time.Second),
+		"per-request timeout (or set MYTHY_REQUEST_TIMEOUT)")
+	f.DurationVar(&c.connTimeout, "connect-timeout", envOrDuration("MYTHY_CONNECT_TIMEOUT", 5*time.Second),
+		"TCP connect timeout (or set MYTHY_CONNECT_TIMEOUT)")
+	f.IntVar(&c.retries, "retries", envOrInt("MYTHY_RETRIES", 2),
+		"transient-error retries on reads, never on writes (or set MYTHY_RETRIES)")
 }
 
 // build composes a ready-to-use Session: opens the transport, runs the
@@ -47,9 +62,6 @@ func (c *connFlags) bind(cmd *cobra.Command) {
 func (c *connFlags) build(ctx context.Context, cf *catalogFlags) (*session.Session, error) {
 	if c.host == "" && c.serialDev == "" {
 		return nil, fmt.Errorf("one of --host or --serial is required for live commands")
-	}
-	if cf.templatesRoot == "" {
-		cf.templatesRoot = os.Getenv("MYTHY_TEMPLATES")
 	}
 	if cf.templatesRoot == "" {
 		return nil, fmt.Errorf("--templates is required (or set MYTHY_TEMPLATES)")

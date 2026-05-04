@@ -258,18 +258,28 @@ is set.
 
 ## Connection flags (apply to every live command)
 
-| Flag | Default | Notes |
-|---|---|---|
-| `--host` | – | TCP host (e.g. `192.0.2.10`) |
-| `--port` | `502` | TCP port; IANA-registered Modbus TCP |
-| `--serial` | – | RTU device path (e.g. `/dev/ttyUSB0`); auto-selects RTU |
-| `--baud` | `19200` | RTU baud rate |
-| `--parity` | `N` | RTU parity: `N`, `E`, or `O` |
-| `--stopbits` | `1` | RTU stop bits |
-| `--unit-id` | `1` | Modbus unit ID |
-| `--request-timeout` | `2s` | per-request timeout |
-| `--connect-timeout` | `5s` | TCP connect timeout |
-| `--retries` | `2` | transient-error retries on reads (writes never retry) |
+Every flag below has a matching `MYTHY_<NAME>` environment variable
+(dashes become underscores, e.g. `--request-timeout` →
+`MYTHY_REQUEST_TIMEOUT`). Precedence is **CLI flag > env var >
+hardcoded default**.
+
+| Flag | Env var | Default | Notes |
+|---|---|---|---|
+| `--host` | `MYTHY_HOST` | – | TCP host (e.g. `192.0.2.10`) |
+| `--port` | `MYTHY_PORT` | `502` | TCP port; IANA-registered Modbus TCP |
+| `--serial` | `MYTHY_SERIAL` | – | RTU device path (e.g. `/dev/ttyUSB0`); auto-selects RTU |
+| `--baud` | `MYTHY_BAUD` | `19200` | RTU baud rate |
+| `--parity` | `MYTHY_PARITY` | `N` | RTU parity: `N`, `E`, or `O` |
+| `--stopbits` | `MYTHY_STOPBITS` | `1` | RTU stop bits |
+| `--unit-id` | `MYTHY_UNIT_ID` | `1` | Modbus unit ID |
+| `--request-timeout` | `MYTHY_REQUEST_TIMEOUT` | `2s` | per-request timeout |
+| `--connect-timeout` | `MYTHY_CONNECT_TIMEOUT` | `5s` | TCP connect timeout |
+| `--retries` | `MYTHY_RETRIES` | `2` | transient-error retries on reads (writes never retry) |
+| `--transport` | `MYTHY_TRANSPORT` | – | force `tcp` or `rtu`; auto-detected from `--host`/`--serial` |
+| `--templates` | `MYTHY_TEMPLATES` | – | path to ThyVisor `Templates/` |
+| `--device` | `MYTHY_DEVICE` | – | PRODUCT code (e.g. `PROX-VX0-e`) for catalog-only commands |
+| `--locale` | `MYTHY_LOCALE` | `en` | DSC string locale (`en|it|es|ru|tr`) |
+| `--format` | `MYTHY_FORMAT` | `human` | output format (see [Output formats](#output-formats)) |
 
 ## Help
 
