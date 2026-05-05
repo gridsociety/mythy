@@ -55,8 +55,15 @@ installer, so the first-time setup needs a Windows machine (or
 
 1. Download the latest "Thytronic Templates" package from
    <https://www.thytronic.com/products-download-software.php>.
-2. Run the installer on a Windows machine, in a Windows VM, or
-   under Wine on macOS/Linux.
+2. Run the installer. Either:
+   - **On Windows** — double-click the `.exe` and click through the
+     wizard (the defaults are fine).
+   - **Under [Wine](https://www.winehq.org/) on macOS/Linux** —
+     confirmed working. After Wine is installed:
+     ```bash
+     wine ThytronicTemplates_V<version>_FULL.exe
+     ```
+     and click through the wizard the same way.
 3. Copy the entire `C:\Program Files (x86)\Thytronic\Templates`
    folder (or, under Wine, `~/.wine/drive_c/Program Files (x86)/Thytronic/Templates`)
    to wherever you keep `mythy`-related files.
