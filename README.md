@@ -50,27 +50,29 @@ To build from source instead, see [Building](#building-from-source).
 
 `mythy` reads the parameter catalog from a copy of ThyVisor's
 `Templates/` folder. Thytronic distributes these as a Windows
-installer, so the first-time setup needs a Windows machine:
+installer, so the first-time setup needs a Windows machine (or
+[Wine](https://www.winehq.org/) — confirmed working):
 
 1. Download the latest "Thytronic Templates" package from
    <https://www.thytronic.com/products-download-software.php>.
-2. Run the installer on a Windows machine.
+2. Run the installer on a Windows machine, in a Windows VM, or
+   under Wine on macOS/Linux.
 3. Copy the entire `C:\Program Files (x86)\Thytronic\Templates`
-   folder to wherever you keep `mythy`-related files.
+   folder (or, under Wine, `~/.wine/drive_c/Program Files (x86)/Thytronic/Templates`)
+   to wherever you keep `mythy`-related files.
 
 The folder is portable — once copied off Windows, `mythy` reads it
 fine on macOS and Linux. You only need to repeat this when Thytronic
 ships a new template release.
 
-> **Why a Windows step?** The installer is an InstallShield package
-> wrapping an encrypted MSI that contains a 360 MB CAB with 2000+
+> **Why no auto-extraction?** The installer is an InstallShield
+> package wrapping an encrypted MSI that contains a CAB with 2000+
 > template files. We investigated extracting it natively in pure Go
-> (ISSetupStream → MSI → CAB chain) — stage 1 is small, but the MSI
-> table parser and CAB decompressor would be ~2 KLoC of new code with
-> no maintained Go libraries to lean on. The maintenance cost didn't
-> justify the convenience for something that runs at most a few times
-> per vendor template release. A Windows VM works fine for this
-> one-time step.
+> (ISSetupStream → MSI → CAB chain) — the first stage is small, but
+> the MSI and CAB layers would be a significant amount of new code
+> with no maintained Go libraries to lean on. The maintenance cost
+> didn't justify the convenience for something that runs at most a
+> few times per vendor template release.
 
 ### 3. Point mythy at the templates
 
