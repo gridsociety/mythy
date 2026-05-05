@@ -25,6 +25,7 @@ func newDiffCmd(cf *catalogFlags) *cobra.Command {
 	var conn connFlags
 	var format string
 	var noProgress bool
+	var includeAll bool
 
 	cmd := &cobra.Command{
 		Use:   "diff <file>",
@@ -52,7 +53,10 @@ func newDiffCmd(cf *catalogFlags) *cobra.Command {
 			if !noProgress {
 				progress = makeReadProgress(cmd.ErrOrStderr(), false)
 			}
-			changes, err := configio.Diff(ctx, s, parsed, configio.DiffOptions{Progress: progress})
+			changes, err := configio.Diff(ctx, s, parsed, configio.DiffOptions{
+				Progress:   progress,
+				IncludeAll: includeAll,
+			})
 			if err != nil {
 				return err
 			}
@@ -66,6 +70,8 @@ func newDiffCmd(cf *catalogFlags) *cobra.Command {
 	conn.bind(cmd)
 	cmd.Flags().StringVar(&format, "format", "", "human|json|yaml|unified (default: from MYTHY_FORMAT or human)")
 	cmd.Flags().BoolVar(&noProgress, "no-progress", false, "suppress the progress indicator (auto-suppressed when stderr isn't a TTY)")
+	cmd.Flags().BoolVar(&includeAll, "all", false,
+		"include runtime/state items (READONLY=YES, paths under Read/) — defaults to filtered to surface only configuration drift")
 	return cmd
 }
 

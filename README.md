@@ -225,9 +225,13 @@ mythy g61850 invoke --host 192.0.2.10 ResetAll --force
 mythy export --host 192.0.2.10 sample.yaml
 
 # Compare a file to the live device
+# Default: configuration drift only. Items under Read/ or marked
+# READONLY="YES" (counters, buffers, live measurements, etc.) are
+# filtered out — re-run with --all to include them.
 mythy diff --host 192.0.2.10 sample.yaml                      # human table
 mythy diff --host 192.0.2.10 --format=unified sample.yaml     # diff -u style
 mythy diff --host 192.0.2.10 --json sample.yaml               # structured
+mythy diff --host 192.0.2.10 --all sample.yaml                # include runtime/state
 
 # Preview, then apply (one edit transaction wraps every change)
 mythy import --host 192.0.2.10 --dry-run sample.yaml

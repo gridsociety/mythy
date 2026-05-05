@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/gridsociety/mythy/pkg/catalog"
 	"github.com/gridsociety/mythy/pkg/session"
@@ -18,15 +19,43 @@ type Change struct {
 	File    any    // value from the YAML
 }
 
-// DiffOptions controls Diff behaviour. The zero value is fine; the
-// only knob today is Progress, which lets the caller render a
-// progress indicator across the per-key Modbus reads (Diff issues
-// one read per file entry).
+// DiffOptions controls Diff behaviour. The zero value is fine.
+//
+// Progress, when non-nil, is invoked once before each Modbus read and
+// once more at the end with done == total and name == "" to signal
+// completion. Mirrors ExportOptions.Progress.
+//
+// IncludeAll, when false (the default), filters out runtime/state
+// entries before any device read: items whose catalog path starts with
+// "Read/" or whose READONLY="YES". This makes the default diff focus
+// on operator-configurable drift and skips the per-key read for the
+// filtered ones, dropping a 7400-key snapshot diff from minutes to
+// seconds. Set true to compare every key in the file (today's
+// pre-filter behaviour).
 type DiffOptions struct {
-	// Progress, when non-nil, is invoked once before each Modbus
-	// read and once more at the end with done == total and name == ""
-	// to signal completion. Mirrors ExportOptions.Progress.
-	Progress func(done, total int, name string)
+	Progress   func(done, total int, name string)
+	IncludeAll bool
+}
+
+// keepConfigChange is the default-filter predicate: we drop entries
+// the operator cannot meaningfully change (READONLY) and entries that
+// live under the runtime/state subtree (path starts with "Read/").
+// The two conditions overlap heavily but the union catches outliers
+// like Eth0_HW_Address (path=Communication/eth0, READONLY=YES) and
+// any rare writable Read/ entry.
+//
+// Unknown keys (empty path, readOnly=false) are kept: Validate runs
+// before Diff and rejects keys not in the catalog, so reaching this
+// predicate with empty path implies a bug — surfacing the diff is the
+// right failure mode.
+func keepConfigChange(path string, readOnly bool) bool {
+	if readOnly {
+		return false
+	}
+	if strings.HasPrefix(path, "Read/") {
+		return false
+	}
+	return true
 }
 
 // Diff reads each settings key from the live device and compares it
@@ -40,10 +69,14 @@ type DiffOptions struct {
 // actually differ.
 func Diff(ctx context.Context, s *session.Session, cf *ConfigFile, opts DiffOptions) ([]Change, error) {
 	tpl := s.Template()
-	pathByName := make(map[string]string)
+	type leafMeta struct {
+		path     string
+		readOnly bool
+	}
+	metaByName := make(map[string]leafMeta)
 	for _, g := range tpl.Menu.WalkGroups(walkAll()) {
 		for _, d := range g.Data {
-			pathByName[d.Name] = g.Path()
+			metaByName[d.Name] = leafMeta{path: g.Path(), readOnly: d.ReadOnly}
 		}
 	}
 
@@ -53,7 +86,11 @@ func Diff(ctx context.Context, s *session.Session, cf *ConfigFile, opts DiffOpti
 	}
 	items := make([]item, 0, len(cf.Settings))
 	for k, v := range cf.Settings {
-		items = append(items, item{name: k, path: pathByName[k], fileVal: v})
+		m := metaByName[k]
+		if !opts.IncludeAll && !keepConfigChange(m.path, m.readOnly) {
+			continue
+		}
+		items = append(items, item{name: k, path: m.path, fileVal: v})
 	}
 	sort.Slice(items, func(i, j int) bool {
 		if items[i].path != items[j].path {

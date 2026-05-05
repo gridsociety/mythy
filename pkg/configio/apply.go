@@ -34,7 +34,10 @@ type ApplyOptions struct {
 // The product-mismatch check lives in Validate; the caller is expected
 // to have run it already (mythy import does).
 func Apply(ctx context.Context, s *session.Session, cf *ConfigFile, opts ApplyOptions) (*Report, error) {
-	changes, err := Diff(ctx, s, cf, DiffOptions(opts))
+	// Apply must see every changed key — including READONLY ones, which
+	// route to report.Skipped. The default Diff filter would silently
+	// hide them, breaking that contract.
+	changes, err := Diff(ctx, s, cf, DiffOptions{Progress: opts.Progress, IncludeAll: true})
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +77,8 @@ func Apply(ctx context.Context, s *session.Session, cf *ConfigFile, opts ApplyOp
 // any READONLY DATA the file disagrees on (which a real Apply would
 // silently skip).
 func ApplyDryRun(ctx context.Context, s *session.Session, cf *ConfigFile, opts ApplyOptions) (*Report, error) {
-	changes, err := Diff(ctx, s, cf, DiffOptions(opts))
+	// Same reasoning as Apply: dry-run must surface READONLY mismatches.
+	changes, err := Diff(ctx, s, cf, DiffOptions{Progress: opts.Progress, IncludeAll: true})
 	if err != nil {
 		return nil, err
 	}

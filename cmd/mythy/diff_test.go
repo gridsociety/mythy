@@ -23,3 +23,15 @@ func TestRenderDiffTable(t *testing.T) {
 		}
 	}
 }
+
+func TestDiffCommandAllFlagRegistered(t *testing.T) {
+	// --all must exist on the diff command and default to false.
+	cmd := newDiffCmd(&catalogFlags{})
+	flag := cmd.Flags().Lookup("all")
+	if flag == nil {
+		t.Fatal("--all flag not registered on diff command")
+	}
+	if flag.Value.String() != "false" {
+		t.Errorf("--all default = %q, want \"false\"", flag.Value.String())
+	}
+}
