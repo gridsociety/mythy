@@ -6,9 +6,8 @@
 // at the byte level is the transport's responsibility.
 //
 // Word order for multi-register types (LONG, ULONG): low word FIRST,
-// high word SECOND. Verified against the captured IDENTIFICATION
-// response (the spec § 2.3 / § 2.10): bytes 86 a0 00 01 ⇒ registers
-// (0x86A0, 0x0001) ⇒ value 0x000186A0 = 100000 (the live device serial).
+// high word SECOND. Example: bytes 86 a0 00 01 ⇒ registers
+// (0x86A0, 0x0001) ⇒ value 0x000186A0.
 package codec
 
 import (

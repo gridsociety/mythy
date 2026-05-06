@@ -9,9 +9,6 @@ browse its parameter catalog, read measurements, change settings,
 snapshot configurations to YAML, and invoke device commands without
 leaving the terminal.
 
-See [the spec](the spec) for the wire protocol, catalog layout, and
-architecture in detail.
-
 ## What it does
 
 | Capability | Highlights |
@@ -241,9 +238,8 @@ mythy import --host 192.0.2.10 sample.yaml
 # Different product → pass --force to skip the product-mismatch check.
 ```
 
-The YAML schema is documented in [the spec § 4](the spec). Read-only,
-hidden, and module-disabled DATA are excluded by default; `--include-readonly`
-and `--include-hidden` widen the export.
+Read-only, hidden, and module-disabled DATA are excluded by default;
+`--include-readonly` and `--include-hidden` widen the export.
 
 ### Raw escape hatches
 

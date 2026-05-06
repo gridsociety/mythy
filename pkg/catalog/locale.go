@@ -14,7 +14,7 @@ var ErrUnknownLocale = errors.New("unknown locale")
 
 // localeLetters maps a locale code to (folder, letter) for the catalog.
 // X is the placeholder used in Codifica.xml; we substitute the locale letter
-// at load time. See the spec § 2.5 for the full mapping.
+// at load time.
 var localeLetters = map[string]struct {
 	folder, letter string
 }{
