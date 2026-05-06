@@ -30,3 +30,6 @@ Templates/
 Templates.zip
 
 *.cache
+
+# Internal planning/spec docs — not for public repo
+/docs/
