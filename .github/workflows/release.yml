@@ -18,8 +18,47 @@ jobs:
       - run: go vet ./...
       - run: go test -race ./...
 
-  build:
+  licenses:
     needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+      - name: Generate THIRD_PARTY_LICENSES
+        run: |
+          set -euo pipefail
+          go install github.com/google/go-licenses@v1.6.0
+          TMP="$(mktemp -d)"
+          "$(go env GOPATH)/bin/go-licenses" save ./cmd/mythy \
+            --save_path="$TMP/lic" \
+            --ignore github.com/gridsociety/mythy \
+            --force
+          {
+            echo "Third-party licenses bundled with mythy"
+            echo "========================================"
+            echo
+            find "$TMP/lic" -type f | sort | while read -r f; do
+              mod="$(dirname "${f#$TMP/lic/}")"
+              echo "## $mod"
+              echo "----------------------------------------"
+              echo
+              cat "$f"
+              echo
+              echo
+            done
+          } > THIRD_PARTY_LICENSES
+      - uses: actions/upload-artifact@v4
+        with:
+          name: third-party-licenses
+          path: THIRD_PARTY_LICENSES
+          if-no-files-found: error
+          retention-days: 1
+
+  build:
+    needs: [test, licenses]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -40,6 +79,10 @@ jobs:
         with:
           go-version: '1.25'
           cache: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: third-party-licenses
+          path: .
       - name: Build & package
         env:
           GOOS: ${{ matrix.goos }}
@@ -56,13 +99,14 @@ jobs:
             -ldflags "-s -w -X main.version=${VERSION}" \
             -o "build/${BIN}" \
             ./cmd/mythy
+          cp LICENSE THIRD_PARTY_LICENSES build/
           ARCH="${GOARCH}"
           [ -n "${GOARM:-}" ] && ARCH="armv${GOARM}"
           STEM="mythy-${VERSION}-${GOOS}-${ARCH}"
           if [ "$GOOS" = windows ]; then
-            (cd build && zip "../dist/${STEM}.zip" "$BIN")
+            (cd build && zip "../dist/${STEM}.zip" "$BIN" LICENSE THIRD_PARTY_LICENSES)
           else
-            tar -C build -czf "dist/${STEM}.tar.gz" "$BIN"
+            tar -C build -czf "dist/${STEM}.tar.gz" "$BIN" LICENSE THIRD_PARTY_LICENSES
           fi
       - uses: actions/upload-artifact@v4
         with:
