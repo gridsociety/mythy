@@ -169,7 +169,15 @@ func (s *Session) encodeForWrite(d *catalog.Data, value any) ([]uint16, error) {
 	if cls, ok := s.tpl.Classes[d.Tipo]; ok {
 		m, ok := value.(map[string]any)
 		if !ok {
-			return nil, fmt.Errorf("set %s: compound TIPO=%s needs map[string]any, got %T", d.Name, d.Tipo, value)
+			// The previous message leaked the Go-internal `map[string]any`
+			// type, which is unactionable from a CLI argv — there's no
+			// way to pass a literal Go map as a shell string. Point at
+			// the supported dotted-path syntax instead so the next user
+			// hitting this lands on the right escape route.
+			return nil, fmt.Errorf(
+				"set %s: this is a compound (TIPO=%s); set sub-fields with dotted-path, "+
+					"e.g. %s.<subfield>=<value> (see `mythy set --help`)",
+				d.Name, d.Tipo, d.Name)
 		}
 		return codec.EncodeCompound(m, cls, s.tpl.Enums, d.CompoundOverrides)
 	}

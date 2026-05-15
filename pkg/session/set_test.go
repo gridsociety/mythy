@@ -2,6 +2,7 @@ package session_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/gridsociety/mythy/pkg/transport"
@@ -43,6 +44,38 @@ func TestSetEnumByLabel(t *testing.T) {
 	}
 	if got := f.Writes[0].Values[0]; got != 4 {
 		t.Errorf("wire value = %d, want 4 (= 19200 baud OVERRIDE)", got)
+	}
+}
+
+func TestSetCompoundWithScalarValuePointsToDottedPath(t *testing.T) {
+	// Issue #22 follow-up: when a user does `mythy set RELE_K1=foo`
+	// against a compound DATA, the error must (a) NOT leak the Go-
+	// internal `map[string]any` type — that's unactionable from a CLI
+	// — and (b) point the user at the supported dotted-path syntax
+	// with a concrete example. Locks the new wording so a future
+	// refactor doesn't quietly drop the hint.
+	f := transport.NewFake()
+	s := mkSession(t, f)
+
+	err := s.Set(context.Background(), "TEST_SOGLIA", "ECCITATO")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	got := err.Error()
+	for _, want := range []string{
+		"TEST_SOGLIA",                  // names the offending DATA
+		"compound",                     // explains why
+		"SOGLIA_T",                     // names the TIPO
+		"dotted-path",                  // names the supported syntax
+		"TEST_SOGLIA.<subfield>=<value>", // shows the exact form
+		"mythy set --help",             // points at the full docs
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("error message missing %q\nfull: %s", want, got)
+		}
+	}
+	if strings.Contains(got, "map[string]any") {
+		t.Errorf("error message must not leak the Go-internal type:\n%s", got)
 	}
 }
 
