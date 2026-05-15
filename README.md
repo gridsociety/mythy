@@ -2,12 +2,12 @@
 
 ![mythy logo](logo.png)
 
-A command-line client for **Thytronic** protection relays (XV10P, NV10P,
-NA10, …). `mythy` speaks the same wire protocol as the vendor's ThyVisor
-Windows app — Modbus TCP and Modbus RTU — so you can identify a device,
-browse its parameter catalog, read measurements, change settings,
-snapshot configurations to YAML, and invoke device commands without
-leaving the terminal.
+A command-line client for **Thytronic** protection relays. `mythy`
+speaks the same wire protocol as the vendor's ThyVisor Windows app —
+Modbus TCP and Modbus RTU — so you can identify a device, browse its
+parameter catalog, read measurements, change settings, snapshot
+configurations to YAML, and invoke device commands without leaving
+the terminal.
 
 ## What it does
 
@@ -23,6 +23,27 @@ leaving the terminal.
 | Output formats | `human` (default), `json`, `yaml`, `unified` (for diff); `--json`/`--yaml` aliases; `MYTHY_FORMAT` env |
 | Transports | Modbus TCP (default port 502) and Modbus RTU on serial / USB-CDC |
 | Safety rails | `--force` gate on destructive operations; client-side validation (RANGE bounds, ENUM membership, STRING length) before any write |
+
+## Compatibility
+
+Thytronic relay templates share the same on-the-wire data layout
+across families: every product in the vendor's `Codifica.xml`
+exposes its parameter catalog through the same `<message>` /
+`<part>` / `<TIPO>` schema, and the IDENTIFICATION register lives
+at the same Modbus address on every family that declares it. In
+principle `mythy` should work against any device the vendor
+catalog covers.
+
+In practice it has been exercised end-to-end only on the two
+devices we have on hand:
+
+- **XV10P** (PROX family)
+- **NV10P** (PRON family)
+
+Other products (NA10, XMR, DMC*, SME*, CCI, NTG, iBU, …) are
+expected to work but are **untested**. If you try one and hit a
+mismatch, please open an issue with the device's `identify`
+output and a description of what failed.
 
 ## Getting started
 
@@ -350,3 +371,12 @@ pkg/session/    High-level API: Connect, Identify, Read, Set, Command, …
 pkg/configio/   YAML export / import / diff / apply
 testdata/       Synthetic catalog fixture for tests
 ```
+
+## License
+
+Released under the MIT License — see [LICENSE](LICENSE) for the
+full text. `mythy` is provided **as-is**, without warranty of any
+kind: you are responsible for verifying its behavior before using
+it against production relays. The authors are not affiliated with
+Thytronic; "Thytronic", "ThyVisor", and product names are
+trademarks of their respective owners.

@@ -119,9 +119,9 @@ func (c *connFlags) build(ctx context.Context, cf *catalogFlags) (*session.Sessi
 	} else {
 		// Look up IDENTIFICATION's wire address from the catalog instead
 		// of hardcoding 0x143E (audit I11). We need a template for that
-		// lookup, which we don't have yet — but every PROX/PRON/XMR
-		// template puts IDENTIFICATION at num=5183, and that's the only
-		// register guaranteed at a fixed address across families. So
+		// lookup, which we don't have yet — but every Thytronic relay
+		// template that declares IDENTIFICATION puts it at num=5183
+		// (empirically verified across the full vendor catalog), so
 		// hardcoding 0x143E here is structurally fine; this comment
 		// records the deliberate choice.
 		regs, err := t.ReadInputRegisters(ctx, 0x143E, 5)
