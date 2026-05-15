@@ -100,7 +100,7 @@ func TestValidateAgainstRangeMultiBand(t *testing.T) {
 func TestValidateAgainstRangeNonNumericSkipped(t *testing.T) {
 	// STRING and ENUM TIPOs are validated elsewhere; validateAgainstRange
 	// must bail out before trying to read Range numerics.
-	for _, tipo := range []string{"STRING", "ENUM", "ENUM_BYTE", "ENUM_LONG"} {
+	for _, tipo := range []string{"STRING", "ENUM", "ENUM_BYTE", "ENUM_WORD", "ENUM_LONG"} {
 		d := &catalog.Data{
 			Name: "x",
 			Tipo: tipo,

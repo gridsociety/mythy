@@ -46,6 +46,10 @@
                CLASS="UBYTE_PARAM" type="WREG" num="6148" dim="1"/>
       <message name="TEST_EnableBoardResponse"/>
 
+      <message level="BY_USER_LEVEL_2" dsc="Compound with TIPO override" name="TEST_SOGLIA"
+               CLASS="SOGLIA_T" type="WREG" num="6149" dim="3"/>
+      <message name="TEST_SOGLIAResponse"/>
+
       <message level="BY_USER_LEVEL_1" dsc="Reference name" name="NomeLinea"
                CLASS="STRING_PARAM" type="WREG" num="6200" dim="10"/>
       <message name="NomeLineaResponse"/>
@@ -116,6 +120,17 @@
         <VAR NAME="Valore"     TIPO="ULONG"/>
         <VAR NAME="Correzione" TIPO="LONG"/>
       </CLASS>
+      <!-- CLASS dichiara State come ENUM (1 reg); le istanze fanno
+           override a ENUM_LONG (2 reg) via nested <DATA>. DIM=3 =
+           2 (State, overridden) + 1 (Pickup). Riproduzione minimale
+           di SOGLIA in NV10P-EB0-u, per testare issue #6. -->
+      <CLASS NAME="SOGLIA_T" DIM="3">
+        <VAR NAME="State"  TIPO="ENUM">
+          <RANGE VALUE="OFF" OVERRIDE="0"/>
+          <RANGE VALUE="ON"  OVERRIDE="1"/>
+        </VAR>
+        <VAR NAME="Pickup" TIPO="UWORD"/>
+      </CLASS>
     </definitions>
   </WSDL>
   <MENU>
@@ -137,6 +152,12 @@
       </GROUP>
       <GROUP NAME="Timers">
         <DATA NAME="EnF81_TSc" DSC="Frequency enable delay" TIPO="TIMER" VALORE=""/>
+      </GROUP>
+      <GROUP NAME="Soglie">
+        <DATA NAME="TEST_SOGLIA" DSC="Test compound with TIPO override" TIPO="SOGLIA_T" VALORE="">
+          <DATA NAME="State"  TIPO="ENUM_LONG" DEFAULT="0" VALORE="0"/>
+          <DATA NAME="Pickup" TIPO="UWORD"     DEFAULT="0" VALORE="0"/>
+        </DATA>
       </GROUP>
     </GROUP>
     <GROUP NAME="Communication">

@@ -29,6 +29,13 @@ func (tpl *Template) resolveTypedefs() {
 				}
 				d.Tipo = td.Tipo
 			}
+			// CompoundOverrides may also carry typedef-aliased TIPOs.
+			// Resolve in place so the codec only ever sees primitives.
+			for _, ov := range d.CompoundOverrides {
+				if td, ok := tpl.Typedefs[ov.Tipo]; ok {
+					ov.Tipo = td.Tipo
+				}
+			}
 		}
 		for _, c := range g.Children {
 			visit(c)
@@ -194,7 +201,7 @@ func applyVarRanges(v *ClassVar, rows []rangeRow) {
 			n, _ := strconv.Atoi(rows[0].Value)
 			v.StringLen = n
 		}
-	case "ENUM", "ENUM_BYTE", "ENUM_LONG":
+	case "ENUM", "ENUM_BYTE", "ENUM_WORD", "ENUM_LONG":
 		e := &Enum{Name: v.Name + "Inline"}
 		for _, r := range rows {
 			ov, _ := strconv.Atoi(r.Override)

@@ -12,13 +12,21 @@ import (
 // to uint64 (unsigned) or int64 (signed). Strings decode to Go strings.
 // Inline-enum sub-fields decode to their resolved label (string), or fall
 // back to the numeric value if the label is missing.
-func DecodeCompound(regs []uint16, cls *catalog.Class, _ map[string]*catalog.Enum) (map[string]any, error) {
+//
+// overrides, when non-nil, carries per-sub-field TIPO overrides from
+// the parent <DATA TIPO="<class>">. The CLASS layout is the default;
+// each VAR's effective TIPO is the override's TIPO when present. This
+// is how compounds whose <CLASS> declares a sub-field as ENUM but the
+// instance promotes it to ENUM_LONG (e.g. SOGLIA.Stato in NV10P
+// templates) get the right wire width.
+func DecodeCompound(regs []uint16, cls *catalog.Class, _ map[string]*catalog.Enum, overrides map[string]*catalog.CompoundFieldOverride) (map[string]any, error) {
 	if cls == nil {
 		return nil, fmt.Errorf("DecodeCompound: nil class")
 	}
 	out := make(map[string]any, len(cls.Vars))
 	cursor := 0
 	for _, v := range cls.Vars {
+		v = applyOverride(v, overrides)
 		w := varWidth(v)
 		if w == 0 {
 			return nil, fmt.Errorf("DecodeCompound: cannot determine width of VAR %s (TIPO=%s)", v.Name, v.Tipo)
@@ -38,12 +46,13 @@ func DecodeCompound(regs []uint16, cls *catalog.Class, _ map[string]*catalog.Enu
 }
 
 // EncodeCompound is the inverse of DecodeCompound. Used by Set.
-func EncodeCompound(values map[string]any, cls *catalog.Class, _ map[string]*catalog.Enum) ([]uint16, error) {
+func EncodeCompound(values map[string]any, cls *catalog.Class, _ map[string]*catalog.Enum, overrides map[string]*catalog.CompoundFieldOverride) ([]uint16, error) {
 	if cls == nil {
 		return nil, fmt.Errorf("EncodeCompound: nil class")
 	}
 	out := make([]uint16, 0, cls.Dim)
 	for _, v := range cls.Vars {
+		v = applyOverride(v, overrides)
 		w := varWidth(v)
 		if w == 0 {
 			return nil, fmt.Errorf("EncodeCompound: cannot determine width of VAR %s", v.Name)
@@ -61,10 +70,20 @@ func EncodeCompound(values map[string]any, cls *catalog.Class, _ map[string]*cat
 	return out, nil
 }
 
+// applyOverride returns v with its TIPO replaced by the override's TIPO
+// when one is registered for v.Name. The CLASS VAR's InlineEnum and
+// StringLen survive unchanged — overrides today carry only TIPO.
+func applyOverride(v catalog.ClassVar, overrides map[string]*catalog.CompoundFieldOverride) catalog.ClassVar {
+	if ov, ok := overrides[v.Name]; ok && ov.Tipo != "" {
+		v.Tipo = ov.Tipo
+	}
+	return v
+}
+
 // varWidth returns the register count for a sub-field, in registers.
 func varWidth(v catalog.ClassVar) int {
 	switch strings.ToUpper(v.Tipo) {
-	case "BYTE", "UBYTE", "WORD", "UWORD", "BIT16", "ENUM", "ENUM_BYTE":
+	case "BYTE", "UBYTE", "WORD", "UWORD", "BIT16", "INT", "ENUM", "ENUM_BYTE", "ENUM_WORD":
 		return 1
 	case "LONG", "ULONG", "BIT32", "ENUM_LONG":
 		return 2
@@ -83,7 +102,7 @@ func decodeVar(v catalog.ClassVar, regs []uint16) (any, error) {
 		return int64(int8(regs[0] & 0xFF)), nil
 	case "UBYTE":
 		return uint64(regs[0] & 0xFF), nil
-	case "WORD":
+	case "WORD", "INT":
 		i, _ := DecodeWORD(regs)
 		return int64(i), nil
 	case "UWORD", "BIT16":
@@ -97,7 +116,7 @@ func decodeVar(v catalog.ClassVar, regs []uint16) (any, error) {
 		return uint64(u), nil
 	case "STRING":
 		return DecodeSTRING(regs)
-	case "ENUM", "ENUM_BYTE":
+	case "ENUM", "ENUM_BYTE", "ENUM_WORD":
 		return resolveEnum(int(regs[0]), v), nil
 	case "ENUM_LONG":
 		u, _ := DecodeULONG(regs)
@@ -124,7 +143,7 @@ func encodeVar(v catalog.ClassVar, val any, width int) ([]uint16, error) {
 		return []uint16{uint16(toInt64(val) & 0xFF)}, nil
 	case "UBYTE":
 		return []uint16{uint16(toUint64(val) & 0xFF)}, nil
-	case "WORD":
+	case "WORD", "INT":
 		return []uint16{uint16(toInt64(val) & 0xFFFF)}, nil
 	case "UWORD", "BIT16":
 		return []uint16{uint16(toUint64(val) & 0xFFFF)}, nil
@@ -137,7 +156,7 @@ func encodeVar(v catalog.ClassVar, val any, width int) ([]uint16, error) {
 	case "STRING":
 		s, _ := val.(string)
 		return encodeStringChars(s, width), nil
-	case "ENUM", "ENUM_BYTE":
+	case "ENUM", "ENUM_BYTE", "ENUM_WORD":
 		return []uint16{uint16(enumNum(val, v) & 0xFFFF)}, nil
 	case "ENUM_LONG":
 		u := uint64(enumNum(val, v))

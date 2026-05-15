@@ -71,7 +71,7 @@ func (s *Session) decodeRegs(d *catalog.Data, regs []uint16) (Value, error) {
 		v.Number = int64(int8(regs[0] & 0xFF))
 	case "UBYTE":
 		v.Number = int64(regs[0] & 0xFF)
-	case "WORD":
+	case "WORD", "INT":
 		i, _ := codec.DecodeWORD(regs)
 		v.Number = int64(i)
 	case "UWORD", "BIT16":
@@ -86,7 +86,7 @@ func (s *Session) decodeRegs(d *catalog.Data, regs []uint16) (Value, error) {
 	case "STRING":
 		s, _ := codec.DecodeSTRING(regs)
 		v.Str = s
-	case "ENUM", "ENUM_BYTE", "ENUM_LONG":
+	case "ENUM", "ENUM_BYTE", "ENUM_WORD", "ENUM_LONG":
 		num := int(regs[0])
 		if d.Tipo == "ENUM_LONG" {
 			u, _ := codec.DecodeULONG(regs)
@@ -111,7 +111,7 @@ func (s *Session) decodeRegs(d *catalog.Data, regs []uint16) (Value, error) {
 			v.Raw = append([]uint16(nil), regs...)
 			return v, nil
 		}
-		fields, err := codec.DecodeCompound(regs, cls, s.tpl.Enums)
+		fields, err := codec.DecodeCompound(regs, cls, s.tpl.Enums, d.CompoundOverrides)
 		if err != nil {
 			return v, err
 		}

@@ -39,6 +39,15 @@ type Typedef struct {
 	Tipo string
 }
 
+// CompoundFieldOverride captures the per-instance metadata that a
+// nested <DATA> child of a compound <DATA TIPO="<class>"> can carry.
+// Today only Tipo is consumed (codec layout uses it instead of the
+// CLASS VAR TIPO for the matching sub-field); richer fields land here
+// without ABI churn when callers start needing them.
+type CompoundFieldOverride struct {
+	Tipo string // effective TIPO for this sub-field, e.g. "ENUM_LONG" overriding the CLASS "ENUM"
+}
+
 // Info is the <INFO UM=… DP=… KVIS=… …/> child of a DATA leaf. Carries
 // display formatting for measurement renderers.
 type Info struct {

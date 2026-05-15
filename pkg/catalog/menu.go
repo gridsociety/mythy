@@ -53,6 +53,18 @@ type Data struct {
 	Range   *DataRange   // first <RANGE> child, kept for back-compat
 	Ranges  []*DataRange // all <RANGE> children (multi-band DATA)
 
+	// CompoundOverrides carries per-instance sub-field overrides for
+	// compound DATA (TIPO referencing a <CLASS>). Catalog templates
+	// declare each compound's general layout in a <CLASS> with <VAR>
+	// children, but the per-instance <DATA TIPO="<class>"> can carry
+	// nested <DATA NAME="..."> children that re-declare a sub-field's
+	// effective TIPO (e.g. SOGLIA's Stato/Tipo widen from ENUM to
+	// ENUM_LONG). Without honouring these, the encoded register count
+	// can mismatch the on-wire DIM and corrupt writes. nil for
+	// non-compound DATA and for compounds whose CLASS layout already
+	// matches DIM. See issue #6.
+	CompoundOverrides map[string]*CompoundFieldOverride
+
 	// Linked from WSDL in Task 11.
 	Message *Message
 }
@@ -324,10 +336,15 @@ func (g *Group) GobDecode(data []byte) error {
 }
 
 // decodeDataChildren reads the children of a <DATA> element and
-// populates Data.Info, Data.InfoVis, Data.Range when present. Nested
-// <DATA> children (compound sub-fields such as the inner DATA of
-// CONTATORE / INFO_MISURA) are skipped — the codec recovers their
-// layout from the Class definitions parsed in classes.go.
+// populates Data.Info, Data.InfoVis, Data.Range, and (for compound
+// DATA) Data.CompoundOverrides.
+//
+// A nested <DATA NAME=…> inside a compound <DATA TIPO="<class>">
+// re-declares one of the CLASS's sub-fields with an effective TIPO,
+// DEFAULT, RANGE, or VISIBILITY. Today we capture only the TIPO into
+// CompoundOverrides — that's what fixes the layout mismatch reported
+// in #6 (SOGLIA's Stato/Tipo widen from ENUM to ENUM_LONG, restoring
+// DIM=14). Per-instance RANGE / DEFAULT folding is a follow-up.
 func decodeDataChildren(dec *xml.Decoder, parentStart *xml.StartElement, d *Data) error {
 	for {
 		tok, err := dec.Token()
@@ -364,9 +381,21 @@ func decodeDataChildren(dec *xml.Decoder, parentStart *xml.StartElement, d *Data
 				if err := dec.Skip(); err != nil {
 					return err
 				}
+			case "DATA":
+				child := decodeData(t)
+				if err := decodeDataChildren(dec, &t, child); err != nil {
+					return err
+				}
+				if child.Name != "" && child.Tipo != "" {
+					if d.CompoundOverrides == nil {
+						d.CompoundOverrides = make(map[string]*CompoundFieldOverride)
+					}
+					d.CompoundOverrides[child.Name] = &CompoundFieldOverride{Tipo: child.Tipo}
+				}
 			default:
-				// Nested <DATA>, anything else — skip; compound layouts
-				// come from the Class registry.
+				// Anything else (notably <message> / <operation>
+				// remnants if the template ever interleaves them
+				// inside MENU): skip.
 				if err := dec.Skip(); err != nil {
 					return err
 				}
