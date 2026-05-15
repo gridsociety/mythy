@@ -34,7 +34,7 @@ func NewRTUClient(opts Options) *RTUClient {
 		opts.StopBits = 1
 	}
 	if opts.RequestTimeout == 0 {
-		opts.RequestTimeout = 2 * time.Second
+		opts.RequestTimeout = 10 * time.Second
 	}
 	return &RTUClient{opts: opts}
 }
