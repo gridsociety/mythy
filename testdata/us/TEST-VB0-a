@@ -50,6 +50,10 @@
                CLASS="SOGLIA_T" type="WREG" num="6149" dim="3"/>
       <message name="TEST_SOGLIAResponse"/>
 
+      <message level="BY_USER_LEVEL_2" dsc="PT100-board setting" name="TEST_PT100_Setting"
+               CLASS="UBYTE_PARAM" type="WREG" num="6150" dim="1"/>
+      <message name="TEST_PT100_SettingResponse"/>
+
       <message level="BY_USER_LEVEL_1" dsc="Reference name" name="NomeLinea"
                CLASS="STRING_PARAM" type="WREG" num="6200" dim="10"/>
       <message name="NomeLineaResponse"/>
@@ -158,6 +162,9 @@
           <DATA NAME="State"  TIPO="ENUM_LONG" DEFAULT="0" VALORE="0"/>
           <DATA NAME="Pickup" TIPO="UWORD"     DEFAULT="0" VALORE="0"/>
         </DATA>
+      </GROUP>
+      <GROUP NAME="PT100">
+        <DATA NAME="TEST_PT100_Setting" DSC="PT100-board setting" TIPO="UBYTE" VALORE="0" DEFAULT="0" MODULE="SchedaPT100"/>
       </GROUP>
     </GROUP>
     <GROUP NAME="Communication">

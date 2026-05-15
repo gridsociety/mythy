@@ -28,6 +28,21 @@ type ExportOptions struct {
 	// export reads ~7,400 leaves and takes ~4 minutes on LAN; reporting
 	// progress matters for CLI UX.
 	Progress func(done, total int, name string)
+
+	// Report, when non-nil, is populated with per-category lists of
+	// every DATA the filter dropped. The CLI uses it to surface
+	// "skipped N module-disabled key(s)" style summary lines so the
+	// omission isn't silent (issue #21).
+	Report *ExportReport
+}
+
+// ExportReport summarises what Export skipped, grouped by the filter
+// axis that excluded each DATA. Empty when every change was kept.
+type ExportReport struct {
+	SkippedSkip            []string // SKIP="YES" (use --include-skip)
+	SkippedReadOnly        []string // READONLY="YES" (use --include-readonly)
+	SkippedHidden          []string // VISIBILITY="3" cascade (use --include-hidden)
+	SkippedDisabledModules []string // MODULE reported off (use --include-disabled-modules)
 }
 
 // Export reads the kept catalog leaves under opts.Scope, decodes each,
@@ -73,7 +88,25 @@ func Export(ctx context.Context, s *session.Session, opts ExportOptions) ([]byte
 	seen := make(map[string]struct{})
 	for _, g := range scope.WalkGroups(catalog.WalkOptions{IncludeHidden: opts.Filter.IncludeHidden, IncludeReadOnly: true}) {
 		for _, d := range g.Data {
-			if !opts.Filter.KeepData(toDataInfo(g, d), enabledModules) {
+			info := toDataInfo(g, d)
+			if reason := opts.Filter.SkipReason(info, enabledModules); reason != "" {
+				if opts.Report != nil && !alreadySeen(seen, d.Name) {
+					// Categorise the skip so the CLI can render
+					// "skipped N <category> key(s)" summary lines.
+					// Same dedup as the kept-leaf path: a DATA reachable
+					// through multiple menu paths counts once.
+					seen[d.Name] = struct{}{}
+					switch reason {
+					case "skip":
+						opts.Report.SkippedSkip = append(opts.Report.SkippedSkip, d.Name)
+					case "readonly":
+						opts.Report.SkippedReadOnly = append(opts.Report.SkippedReadOnly, d.Name)
+					case "hidden":
+						opts.Report.SkippedHidden = append(opts.Report.SkippedHidden, d.Name)
+					case "module-disabled":
+						opts.Report.SkippedDisabledModules = append(opts.Report.SkippedDisabledModules, d.Name)
+					}
+				}
 				continue
 			}
 			if _, dup := seen[d.Name]; dup {
@@ -165,6 +198,15 @@ func Export(ctx context.Context, s *session.Session, opts ExportOptions) ([]byte
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// alreadySeen returns true if name is in the seen set without
+// inserting it. Mirror of the seen-map deduplication used for kept
+// leaves so skip categorisation only counts a DATA the first time
+// it's encountered in the walk.
+func alreadySeen(seen map[string]struct{}, name string) bool {
+	_, ok := seen[name]
+	return ok
 }
 
 func toDataInfo(g *catalog.Group, d *catalog.Data) session.DataInfo {
