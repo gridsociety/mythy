@@ -157,9 +157,17 @@ func encodeVar(v catalog.ClassVar, val any, width int) ([]uint16, error) {
 		s, _ := val.(string)
 		return encodeStringChars(s, width), nil
 	case "ENUM", "ENUM_BYTE", "ENUM_WORD":
-		return []uint16{uint16(enumNum(val, v) & 0xFFFF)}, nil
+		n, err := enumNum(val, v)
+		if err != nil {
+			return nil, err
+		}
+		return []uint16{uint16(n & 0xFFFF)}, nil
 	case "ENUM_LONG":
-		u := uint64(enumNum(val, v))
+		n, err := enumNum(val, v)
+		if err != nil {
+			return nil, err
+		}
+		u := uint64(n)
 		return []uint16{uint16(u & 0xFFFF), uint16((u >> 16) & 0xFFFF)}, nil
 	}
 	return nil, fmt.Errorf("encodeVar: unknown TIPO %q", v.Tipo)
@@ -189,26 +197,32 @@ func toUint64(v any) uint64 {
 	return 0
 }
 
-func enumNum(val any, v catalog.ClassVar) int {
+// enumNum resolves a sub-field value to the integer wire encoding for
+// an ENUM family VAR. Strings are looked up against v.InlineEnum (the
+// per-VAR <RANGE> declarations); integers pass through. An
+// unresolvable string label returns an error rather than silently
+// defaulting to 0 — quietly zeroing on a typo, a locale-translated
+// label, or any other miss was the silent-data-loss path tracked in
+// issue #4.
+func enumNum(val any, v catalog.ClassVar) (int, error) {
 	switch x := val.(type) {
 	case string:
-		if v.InlineEnum != nil {
-			if n, err := v.InlineEnum.ValueFor(x); err == nil {
-				return n
-			}
+		if v.InlineEnum == nil {
+			return 0, fmt.Errorf("VAR %s has no inline enum to resolve label %q", v.Name, x)
 		}
-		return 0
+		n, err := v.InlineEnum.ValueFor(x)
+		if err != nil {
+			return 0, fmt.Errorf("VAR %s: %w", v.Name, err)
+		}
+		return n, nil
 	case int:
-		// YAML decoders typically produce `int` for small integers; the
-		// previous version of this switch only knew int64/uint64, so an
-		// integer enum value silently became 0.
-		return x
+		return x, nil
 	case int64:
-		return int(x)
+		return int(x), nil
 	case uint64:
-		return int(x)
+		return int(x), nil
 	}
-	return 0
+	return 0, fmt.Errorf("VAR %s: unsupported enum value type %T", v.Name, val)
 }
 
 // encodeStringChars encodes a string as `width` registers of NUL-padded

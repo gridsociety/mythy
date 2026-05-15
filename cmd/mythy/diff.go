@@ -26,6 +26,7 @@ func newDiffCmd(cf *catalogFlags) *cobra.Command {
 	var format string
 	var noProgress bool
 	var includeAll bool
+	var forceLocale bool
 
 	cmd := &cobra.Command{
 		Use:   "diff <file>",
@@ -39,6 +40,9 @@ func newDiffCmd(cf *catalogFlags) *cobra.Command {
 			}
 			parsed, err := configio.Parse(b)
 			if err != nil {
+				return err
+			}
+			if err := reconcileLocale(cmd, parsed.Device.Locale, cf, forceLocale); err != nil {
 				return err
 			}
 			s, err := conn.build(ctx, cf)
@@ -72,6 +76,7 @@ func newDiffCmd(cf *catalogFlags) *cobra.Command {
 	cmd.Flags().BoolVar(&noProgress, "no-progress", false, "suppress the progress indicator (auto-suppressed when stderr isn't a TTY)")
 	cmd.Flags().BoolVar(&includeAll, "all", false,
 		"include runtime/state items (READONLY=YES, paths under Read/) — defaults to filtered to surface only configuration drift")
+	cmd.Flags().BoolVar(&forceLocale, "force-locale", false, "proceed even if --locale differs from the YAML's device.locale")
 	return cmd
 }
 

@@ -16,6 +16,12 @@ type ExportOptions struct {
 	Scope  string               // empty = whole device
 	Filter session.ExportFilter // READONLY/hidden defaults; SKIP always excluded
 
+	// Locale is recorded into device.locale in the YAML so import /
+	// diff / validate can detect cross-locale round-trips that would
+	// otherwise silently remap enum labels to zero. Empty means "don't
+	// record" (legacy behaviour); the CLI always passes a value.
+	Locale string
+
 	// Progress, when non-nil, is invoked once before each catalog leaf
 	// is read, and once more at the end with done == total and name == "".
 	// Use the final call to clear any in-progress UI. The full-device
@@ -106,6 +112,7 @@ func Export(ctx context.Context, s *session.Session, opts ExportOptions) ([]byte
 		Product:        s.Entry().Product,
 		Identification: s.Entry().Identification,
 		ExportedAt:     time.Now().Format(time.RFC3339),
+		Locale:         opts.Locale,
 	}
 	if id := s.Ident(); id != nil {
 		dev.Identification = int(id.Identification)

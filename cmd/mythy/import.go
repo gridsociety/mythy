@@ -13,7 +13,7 @@ import (
 
 func newImportCmd(cf *catalogFlags) *cobra.Command {
 	var conn connFlags
-	var dryRun, force, noProgress bool
+	var dryRun, force, noProgress, forceLocale bool
 	var includeSkip, includeHidden, includeAll, yesIUnderstand bool
 	var format string
 
@@ -29,6 +29,9 @@ func newImportCmd(cf *catalogFlags) *cobra.Command {
 			}
 			parsed, err := configio.Parse(b)
 			if err != nil {
+				return err
+			}
+			if err := reconcileLocale(cmd, parsed.Device.Locale, cf, forceLocale); err != nil {
 				return err
 			}
 			s, err := conn.build(ctx, cf)
@@ -105,6 +108,7 @@ func newImportCmd(cf *catalogFlags) *cobra.Command {
 	cmd.Flags().BoolVar(&includeHidden, "include-hidden", false, "allow writes to VISIBILITY=3 keys (Administrator subtree)")
 	cmd.Flags().BoolVar(&includeAll, "all", false, "shorthand for --include-skip --include-hidden")
 	cmd.Flags().BoolVar(&yesIUnderstand, "yes-i-understand", false, "confirm intent when an --include-* flag is set")
+	cmd.Flags().BoolVar(&forceLocale, "force-locale", false, "proceed even if --locale differs from the YAML's device.locale")
 	cmd.Flags().StringVar(&format, "format", "", "human|json|yaml (default: from MYTHY_FORMAT)")
 	return cmd
 }

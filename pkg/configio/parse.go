@@ -37,6 +37,22 @@ func (e *ProductMismatchError) Error() string {
 		e.FromFile, e.FromDevice)
 }
 
+// LocaleMismatchError signals that the YAML's recorded device.locale
+// disagrees with an explicit --locale passed on the CLI. The two
+// locales map enum labels to different label strings; ignoring the
+// disagreement would silently drop unresolved labels to zero. Callers
+// either accept the file's locale (drop the explicit --locale) or pass
+// --force-locale to keep their CLI value and accept the risk that
+// some labels won't resolve.
+type LocaleMismatchError struct {
+	FromFile, FromCLI string
+}
+
+func (e *LocaleMismatchError) Error() string {
+	return fmt.Sprintf("locale mismatch: file was exported with --locale=%q, CLI passed --locale=%q (drop --locale to adopt the file's, or pass --force-locale to keep yours)",
+		e.FromFile, e.FromCLI)
+}
+
 // Validate runs the catalog-side checks: every settings key must
 // resolve to a DATA in the catalog; every value must round-trip through
 // the codec; device.product must match expectedProduct (unless empty).

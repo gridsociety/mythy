@@ -21,26 +21,32 @@ type configFile struct {
 
 type configDevice struct {
 	Product string `yaml:"product"`
+	Locale  string `yaml:"locale"`
 }
 
 func newValidateCmd(cf *catalogFlags) *cobra.Command {
-	return &cobra.Command{
+	var forceLocale bool
+	cmd := &cobra.Command{
 		Use:   "validate <file>",
 		Short: "Validate a config YAML against the device's catalog (no connection)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			tpl, entry, err := cf.load()
-			if err != nil {
-				return err
-			}
 			data, err := os.ReadFile(args[0])
 			if err != nil {
 				return fmt.Errorf("read %s: %w", args[0], err)
 			}
-			var cfg configFile
-			if err := yaml.Unmarshal(data, &cfg); err != nil {
+			var cfgPeek configFile
+			if err := yaml.Unmarshal(data, &cfgPeek); err != nil {
 				return fmt.Errorf("parse YAML: %w", err)
 			}
+			if err := reconcileLocale(cmd, cfgPeek.Device.Locale, cf, forceLocale); err != nil {
+				return err
+			}
+			tpl, entry, err := cf.load()
+			if err != nil {
+				return err
+			}
+			cfg := cfgPeek
 			if cfg.MythyVersion != 1 {
 				return fmt.Errorf("unsupported mythy_version %d", cfg.MythyVersion)
 			}
@@ -72,4 +78,6 @@ func newValidateCmd(cf *catalogFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&forceLocale, "force-locale", false, "proceed even if --locale differs from the YAML's device.locale")
+	return cmd
 }

@@ -3,6 +3,7 @@ package codec_test
 import (
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/gridsociety/mythy/pkg/catalog"
@@ -174,6 +175,42 @@ func TestEncodeCompoundHandlesEnumWord(t *testing.T) {
 	}
 	if back["Idx"] != int64(5) {
 		t.Errorf("Idx round-trip = %v, want int64(5)", back["Idx"])
+	}
+}
+
+func TestEncodeCompoundErrorsOnUnresolvableEnumLabel(t *testing.T) {
+	// Issue #4: silently-zeroed enum labels (e.g. an Italian label
+	// landing in a US-locale template) corrupted compound writes
+	// without any error. enumNum now surfaces the failure; encodeVar
+	// propagates it; EncodeCompound returns it to the caller.
+	cls := &catalog.Class{
+		Name: "SOGLIA_T",
+		Dim:  3,
+		Vars: []catalog.ClassVar{
+			{
+				Name: "Tipo",
+				Tipo: "ENUM",
+				InlineEnum: &catalog.Enum{
+					Name: "TipoInline",
+					Entries: []catalog.EnumEntry{
+						{Value: 0, Label: "Minimum"},
+						{Value: 1, Label: "Maximum"},
+					},
+				},
+			},
+			{Name: "Pad", Tipo: "UWORD"},
+		},
+	}
+	in := map[string]any{"Tipo": "SOGLIA MASSIMA", "Pad": uint64(0)}
+	_, err := codec.EncodeCompound(in, cls, nil, nil)
+	if err == nil {
+		t.Fatal("expected error for unresolvable enum label, got nil")
+	}
+	if !strings.Contains(err.Error(), "Tipo") {
+		t.Errorf("error should name the offending VAR: %v", err)
+	}
+	if !strings.Contains(err.Error(), "SOGLIA MASSIMA") {
+		t.Errorf("error should quote the unresolved label: %v", err)
 	}
 }
 

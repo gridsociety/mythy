@@ -25,6 +25,13 @@ type Device struct {
 	ProtocolRelease string `yaml:"protocol_release,omitempty"`
 	ExportedFrom    string `yaml:"exported_from,omitempty"`
 	ExportedAt      string `yaml:"exported_at,omitempty"`
+	// Locale carries the --locale value the export ran under, recorded
+	// so import / diff / validate can reconcile against the CLI's
+	// --locale and refuse mismatches that would otherwise silently
+	// remap enum labels to zero (issue #4). Empty in YAML files
+	// produced by mythy builds prior to the issue-#4 fix; the import
+	// path treats that as "legacy, fall back to the CLI flag".
+	Locale string `yaml:"locale,omitempty"`
 }
 
 // Check validates the structural invariants. Detailed key/value
