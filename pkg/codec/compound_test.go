@@ -54,6 +54,39 @@ func TestDecodeTimer(t *testing.T) {
 	}
 }
 
+func TestEncodeCompoundAcceptsIntForEnumSubField(t *testing.T) {
+	// Regression for #3: YAML decoders typically produce `int` for small
+	// integers like `Tipo: 1`. enumNum used to handle only int64/uint64,
+	// so an int value silently became 0 — flipping a SOGLIA from MASSIMA
+	// to MINIMA, or a RELE_PARAM from ECCITATO to DISECCITATO, on import.
+	tpl := loadTpl(t)
+	cls := tpl.Classes["CONTATORE"] // Tipo (ENUM_LONG) + MaxValore (UWORD)
+
+	cases := []struct {
+		name string
+		tipo any
+	}{
+		{"int", int(1)},
+		{"int64", int64(1)},
+		{"uint64", uint64(1)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			in := map[string]any{"Tipo": c.tipo, "MaxValore": uint64(9999)}
+			regs, err := codec.EncodeCompound(in, cls, tpl.Enums)
+			if err != nil {
+				t.Fatalf("EncodeCompound: %v", err)
+			}
+			// ENUM_LONG is low-word-first; Tipo=1 → reg[0]=0x0001, reg[1]=0x0000.
+			// UWORD MaxValore=9999 → reg[2]=0x270F.
+			want := []uint16{0x0001, 0x0000, 0x270F}
+			if !reflect.DeepEqual(regs, want) {
+				t.Errorf("Tipo=%v(%T): regs = %v, want %v", c.tipo, c.tipo, regs, want)
+			}
+		})
+	}
+}
+
 func TestEncodeDecodeRoundTrip(t *testing.T) {
 	tpl := loadTpl(t)
 	cls := tpl.Classes["TIMER"]
