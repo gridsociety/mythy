@@ -268,25 +268,47 @@ func asAnyInt(value any) (int, error) {
 // before the value is encoded. Numeric ranges only — STRING / ENUM
 // types validate elsewhere. Audit I6.
 func validateAgainstRange(value any, d *catalog.Data) error {
-	r := d.Range
-	if r == nil {
-		return nil
-	}
 	// Skip non-numeric TIPOs; the RANGE on STRING DATA is for character
 	// count, not a comma-triple, so DataRange is nil there anyway.
 	switch d.Tipo {
 	case "STRING", "ENUM", "ENUM_BYTE", "ENUM_LONG":
 		return nil
 	}
+	// Multi-band DATA (e.g. VLineaPrimario_1): the catalog declares
+	// several <RANGE> children describing disjoint bands with
+	// different step sizes. Accept the value if it matches any band.
+	ranges := d.Ranges
+	if len(ranges) == 0 && d.Range != nil {
+		ranges = []*catalog.DataRange{d.Range}
+	}
+	if len(ranges) == 0 {
+		return nil
+	}
 	n, err := asAnyInt(value)
 	if err != nil {
 		return fmt.Errorf("set %s: %w", d.Name, err)
 	}
-	if int64(n) < r.Min || int64(n) > r.Max {
-		return fmt.Errorf("set %s: %d out of catalog range [%d, %d]", d.Name, n, r.Min, r.Max)
+	v := int64(n)
+	for _, r := range ranges {
+		if v < r.Min || v > r.Max {
+			continue
+		}
+		if r.Step > 1 && (v-r.Min)%r.Step != 0 {
+			continue
+		}
+		return nil
 	}
-	if r.Step > 1 && (int64(n)-r.Min)%r.Step != 0 {
+	// Build a helpful error message listing all bands.
+	if len(ranges) == 1 {
+		r := ranges[0]
+		if v < r.Min || v > r.Max {
+			return fmt.Errorf("set %s: %d out of catalog range [%d, %d]", d.Name, n, r.Min, r.Max)
+		}
 		return fmt.Errorf("set %s: %d violates step=%d (offsets from %d allowed)", d.Name, n, r.Step, r.Min)
 	}
-	return nil
+	parts := make([]string, 0, len(ranges))
+	for _, r := range ranges {
+		parts = append(parts, fmt.Sprintf("[%d,%d step %d]", r.Min, r.Max, r.Step))
+	}
+	return fmt.Errorf("set %s: %d not in any of catalog bands %s", d.Name, n, strings.Join(parts, " "))
 }
