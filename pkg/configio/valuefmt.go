@@ -161,7 +161,15 @@ func YAMLToCodec(tipo, enumName string, in any) (any, error) {
 	if m, ok := in.(map[string]any); ok {
 		return m, nil
 	}
-	return nil, fmt.Errorf("YAMLToCodec: unsupported tipo %q (value type %T)", tipo, in)
+	// Reached when tipo isn't a primitive AND the YAML value isn't a
+	// nested map. The most common cause is a compound DATA written as
+	// a scalar by mistake (e.g. `RELE_K1: ECCITATO` instead of the
+	// nested `RELE_K1: {Logica: ECCITATO, ...}` shape). Surface that
+	// shape in the error so the next reader doesn't have to guess.
+	return nil, fmt.Errorf(
+		"YAMLToCodec: TIPO=%q with value type %T is not a primitive; "+
+			"if this is a compound, its YAML value must be a nested map of sub-field values",
+		tipo, in)
 }
 
 // decodeHexToRegs parses an even-byte hex string (with or without
