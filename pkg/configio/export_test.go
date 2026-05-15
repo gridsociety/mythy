@@ -54,6 +54,41 @@ func TestExportScopedYAML(t *testing.T) {
 	}
 }
 
+func TestExportRecordsLocaleInHeader(t *testing.T) {
+	// Issue #4: the export captures the locale it ran under into
+	// device.locale, so a later import can detect cross-locale round-
+	// trips that would silently remap enum labels to zero.
+	f := transport.NewFake()
+	f.OnReadHolding(6145, 1, []uint16{5})
+	s := mkSession(t, f)
+
+	bytes, err := configio.Export(context.Background(), s, configio.ExportOptions{
+		Scope:  "Set/Base",
+		Locale: "it",
+		Filter: session.ExportFilter{},
+	})
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	got := string(bytes)
+	if !strings.Contains(got, "locale: it") {
+		t.Errorf("output must record device.locale: it\n%s", got)
+	}
+
+	// Empty Locale: omitempty must skip the field (back-compat with
+	// pre-fix exports). Run the same export with Locale unset.
+	bytes2, err := configio.Export(context.Background(), s, configio.ExportOptions{
+		Scope:  "Set/Base",
+		Filter: session.ExportFilter{},
+	})
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if strings.Contains(string(bytes2), "locale:") {
+		t.Errorf("empty Locale must be omitted (omitempty) from YAML, got:\n%s", string(bytes2))
+	}
+}
+
 func TestExportFiresProgressPerLeaf(t *testing.T) {
 	// Set/Base under default filter has exactly one kept leaf
 	// (MB_address; NomeLinea is READONLY=YES so it's excluded).

@@ -38,7 +38,8 @@ func newExportCmd(cf *catalogFlags) *cobra.Command {
 				includeSkip = true
 			}
 			b, err := configio.Export(ctx, s, configio.ExportOptions{
-				Scope: scope,
+				Scope:  scope,
+				Locale: cf.locale,
 				Filter: session.ExportFilter{
 					IncludeHidden:   includeHidden,
 					IncludeReadOnly: includeReadOnly,
