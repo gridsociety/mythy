@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"encoding/gob"
 	"os"
 	"path/filepath"
 	"testing"
@@ -102,6 +103,74 @@ func TestLoadCacheResolvesTypedefsForStaleCaches(t *testing.T) {
 	}
 	if d.XMLTipo != "ENUM_RELE" {
 		t.Errorf("XMLTipo = %q, want ENUM_RELE", d.XMLTipo)
+	}
+}
+
+func TestLoadCacheRejectsLegacyUnwrappedFormat(t *testing.T) {
+	// Before issue #5 was fixed, SaveCache wrote a bare gob-encoded
+	// *Template (no magic, no version). After the fix, LoadCache must
+	// detect this and route to ErrCacheStale so the caller reparses
+	// the XML — otherwise a user upgrading mythy without wiping their
+	// Templates/ would silently keep running on the old parser's output.
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "TEST")
+	if err := os.WriteFile(src, []byte("<DEVICE/>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cachePath := filepath.Join(tmp, "TEST.cache")
+	f, err := os.Create(cachePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Write a legacy-format cache: bare *Template, no wrapper.
+	if err := gob.NewEncoder(f).Encode(&Template{Identification: 7}); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	// Ensure the cache mtime is newer than the source, so the only
+	// remaining stale-trigger is the missing header.
+	future := time.Now().Add(1 * time.Second)
+	if err := os.Chtimes(cachePath, future, future); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := LoadCache(cachePath, src); err != ErrCacheStale {
+		t.Errorf("LoadCache on legacy format: err = %v, want ErrCacheStale", err)
+	}
+}
+
+func TestLoadCacheRejectsWrongSchemaVersion(t *testing.T) {
+	// When the parser changes the on-disk shape, parserSchemaVersion
+	// is bumped. A cache written by an older build must be rejected
+	// so the caller reparses with the current parser.
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "TEST")
+	if err := os.WriteFile(src, []byte("<DEVICE/>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cachePath := filepath.Join(tmp, "TEST.cache")
+	f, err := os.Create(cachePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Write a cacheFile with a deliberately-wrong schema version.
+	if err := gob.NewEncoder(f).Encode(cacheFile{
+		Magic:         cacheFileMagic,
+		SchemaVersion: parserSchemaVersion + 1, // pretend we're an older build
+		Template:      &Template{Identification: 7},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	future := time.Now().Add(1 * time.Second)
+	if err := os.Chtimes(cachePath, future, future); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := LoadCache(cachePath, src); err != ErrCacheStale {
+		t.Errorf("LoadCache on wrong-version cache: err = %v, want ErrCacheStale", err)
 	}
 }
 
