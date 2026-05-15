@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/gridsociety/mythy/pkg/catalog"
 	"github.com/gridsociety/mythy/pkg/transport"
 )
 
@@ -21,16 +22,20 @@ const (
 	addrEnableSecMode  uint16 = 54295 - 1 // wire = num - 1
 )
 
-// Identify runs the discovery handshake plus a single secure-mode probe.
-// It populates s.ident and s.secMode. If the device does not have
-// ENABLE_SEC_MODE in its firmware (illegal-address exception 0x02), we
-// silently treat secure mode as OFF — the catalog tells us at parse
-// time whether the firmware supports it; this just covers the case
-// where mythy is run against an unknown variant.
+// Identify runs the discovery handshake and resolves the secure-mode
+// state. It populates s.ident and s.secMode.
+//
+// Secure-mode resolution mirrors what ThyVisor does on the wire: if the
+// loaded template (s.tpl) doesn't declare ENABLE_SEC_MODE for this
+// device variant, we never probe — empirically verified against
+// NV10P-EB0-u, where ThyVisor reads nothing in the 0xD4xx area. When
+// the template doesn't load at all (unknown variant), we fall back to
+// probing 0xD416 and treating illegal-address / illegal-data-value
+// exceptions as "secure mode off".
 func (s *Session) Identify(ctx context.Context) (*Identification, error) {
 	// Audit I1: skip the IDENTIFICATION read if the caller has already
 	// seeded the result via SeedIdentification (e.g. connFlags.build
-	// reads the discovery once). The secure-mode probe still happens.
+	// reads the discovery once). Secure-mode resolution still runs.
 	if s.ident == nil {
 		regs, err := s.t.ReadInputRegisters(ctx, addrIdentification, 5)
 		if err != nil {
@@ -47,12 +52,27 @@ func (s *Session) Identify(ctx context.Context) (*Identification, error) {
 		}
 	}
 
+	// Template-first: if the catalog template knows this device and
+	// doesn't declare ENABLE_SEC_MODE, skip the probe entirely. This
+	// matches ThyVisor and avoids a guaranteed-exception round-trip on
+	// variants like NV10P-EB0-u.
+	if s.tpl != nil {
+		key := catalog.ByAddrKey{FC: 4, Addr: int(addrEnableSecMode)}
+		if _, ok := s.tpl.ByAddr[key]; !ok {
+			s.secMode = false
+			return s.ident, nil
+		}
+	}
+
 	// Secure-mode probe (always — we want fresh state).
 	smRegs, err := s.t.ReadInputRegisters(ctx, addrEnableSecMode, 1)
 	if err != nil {
 		var exc *transport.ModbusException
-		if errors.As(err, &exc) && exc.Code == 0x02 {
+		if errors.As(err, &exc) && (exc.Code == 0x02 || exc.Code == 0x03) {
 			// Register doesn't exist on this firmware; secure mode is off.
+			// Some devices (PROX) return 0x02 (illegal data address) for a
+			// missing register; others (PRON/NV10P) return 0x03 (illegal
+			// data value) for the same condition.
 			s.secMode = false
 		} else {
 			return s.ident, err
@@ -65,8 +85,8 @@ func (s *Session) Identify(ctx context.Context) (*Identification, error) {
 
 // SeedIdentification populates s.ident from a value the caller already
 // has (e.g. a discovery exchange done by connFlags.build). The next
-// Identify call skips the IDENTIFICATION read but still performs the
-// secure-mode probe. Audit I1.
+// Identify call skips the IDENTIFICATION read but still resolves the
+// secure-mode state. Audit I1.
 func (s *Session) SeedIdentification(id *Identification) {
 	s.ident = id
 }
