@@ -30,8 +30,14 @@ type Group struct {
 type Data struct {
 	Name        string
 	Description string
-	Tipo        string // <DATA TIPO=>
-	Enum        string // <DATA ENUM=>: name of the <ENUM> to resolve labels
+	// Tipo is the wire-encoding type. For <DATA> whose XML TIPO is a
+	// <TYPEDEF> alias (currently ENUM_RELE/ENUM_LED/ENUM_ING → BIT32),
+	// resolveTypedefs rewrites this to the base TIPO at load time so
+	// every switch site sees the encodable primitive. The original
+	// XML attribute survives in XMLTipo for display.
+	Tipo    string
+	XMLTipo string // raw <DATA TIPO=>; "" if no typedef resolution happened
+	Enum    string // <DATA ENUM=>: name of the <ENUM> to resolve labels
 	Valore      string // <DATA VALORE=>: snapshot current value
 	Default     string // <DATA DEFAULT=>
 	Visibility  string
@@ -44,10 +50,23 @@ type Data struct {
 
 	Info    *Info
 	InfoVis *InfoVis
-	Range   *DataRange
+	Range   *DataRange   // first <RANGE> child, kept for back-compat
+	Ranges  []*DataRange // all <RANGE> children (multi-band DATA)
 
 	// Linked from WSDL in Task 11.
 	Message *Message
+}
+
+// DisplayTipo returns the catalog's semantic TIPO label for UX
+// surfaces (mythy describe, mythy list). It prefers the original XML
+// attribute when typedef resolution rewrote Tipo to a primitive base
+// (e.g. ENUM_RELE → BIT32 surfaces as "ENUM_RELE"), and falls back to
+// Tipo otherwise.
+func (d *Data) DisplayTipo() string {
+	if d.XMLTipo != "" {
+		return d.XMLTipo
+	}
+	return d.Tipo
 }
 
 // Command is a <COMMAND NAME=> leaf.
@@ -329,7 +348,19 @@ func decodeDataChildren(dec *xml.Decoder, parentStart *xml.StartElement, d *Data
 					return err
 				}
 			case "RANGE":
-				d.Range = decodeDataRange(t)
+				if r := decodeDataRange(t); r != nil {
+					// Multi-range DATA: some catalog entries (e.g.
+					// VLineaPrimario_1) declare several <RANGE> children
+					// describing piecewise-valid bands with different
+					// step sizes. Keep them all so the validator can
+					// accept any matching band, and let d.Range point to
+					// the first one for back-compat with code paths that
+					// only look at one.
+					d.Ranges = append(d.Ranges, r)
+					if d.Range == nil {
+						d.Range = r
+					}
+				}
 				if err := dec.Skip(); err != nil {
 					return err
 				}

@@ -43,7 +43,7 @@ Use --scope to restrict to a subtree.`,
 				if d.ReadOnly || d.Tipo == "" {
 					rw = "ro"
 				}
-				fmt.Fprintf(out, "%-30s  %-30s  %-10s  %s\n", path, d.Name, d.Tipo, rw)
+				fmt.Fprintf(out, "%-30s  %-30s  %-10s  %s\n", path, d.Name, d.DisplayTipo(), rw)
 			}
 			return nil
 		},
