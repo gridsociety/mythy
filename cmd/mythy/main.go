@@ -20,7 +20,7 @@ func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:     "mythy",
 		Short:   "CLI for Thytronic protection relays",
-		Long:    "mythy talks to Thytronic Pro-X / Pro-N / XMR protection relays the way ThyVisor does, but smarter.",
+		Long:    "Command-line tool to configure, monitor, and manage Thytronic protection relays.",
 		Version: strings.TrimPrefix(version, "v"),
 	}
 	cf := &catalogFlags{}
