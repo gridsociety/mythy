@@ -42,6 +42,47 @@ func TestFilterModuleGating(t *testing.T) {
 	}
 }
 
+func TestFilterIncludeDisabledModulesOverride(t *testing.T) {
+	// Issue #21: --include-disabled-modules / --all needs to bypass
+	// the module gate so MODULE-attribute DATA (RELE_K*, ING_I*, …)
+	// land in the export when the operator wants full state capture.
+	enabled := map[string]bool{"SchedaPT100": false}
+	off := session.ExportFilter{}
+	if off.KeepData(session.DataInfo{Name: "X", Module: "SchedaPT100"}, enabled) {
+		t.Error("default: module-disabled DATA must be excluded")
+	}
+	on := session.ExportFilter{IncludeDisabledModules: true}
+	if !on.KeepData(session.DataInfo{Name: "X", Module: "SchedaPT100"}, enabled) {
+		t.Error("--include-disabled-modules must include DATA whose MODULE is disabled")
+	}
+}
+
+func TestFilterSkipReasonNamesTheAxis(t *testing.T) {
+	// SkipReason underpins the per-category skip-summary lines the
+	// export CLI now emits. Verify each axis lights up the right tag,
+	// and that "" comes back when nothing trips.
+	enabled := map[string]bool{"M": false}
+	cases := []struct {
+		name string
+		d    session.DataInfo
+		want string
+	}{
+		{"skip", session.DataInfo{Name: "X", Skip: true}, "skip"},
+		{"readonly", session.DataInfo{Name: "X", ReadOnly: true}, "readonly"},
+		{"hidden", session.DataInfo{Name: "X", Hidden: true}, "hidden"},
+		{"module-disabled", session.DataInfo{Name: "X", Module: "M"}, "module-disabled"},
+		{"kept", session.DataInfo{Name: "X"}, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := session.ExportFilter{}.SkipReason(c.d, enabled)
+			if got != c.want {
+				t.Errorf("SkipReason = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
 func TestFilterIncludeReadOnlyOverride(t *testing.T) {
 	f := session.ExportFilter{IncludeReadOnly: true}
 	if !f.KeepData(session.DataInfo{Name: "X", ReadOnly: true}, nil) {
