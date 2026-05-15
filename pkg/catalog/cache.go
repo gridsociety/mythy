@@ -57,6 +57,10 @@ func LoadCache(cachePath, sourcePath string) (*Template, error) {
 	if tpl.Menu != nil {
 		linkMenuToMessages(&tpl)
 	}
+	// Normalize TIPO aliases. Idempotent: caches written by newer
+	// builds already carry resolved Tipo, and the typedef map lookup
+	// is a no-op for primitives.
+	tpl.resolveTypedefs()
 	return &tpl, nil
 }
 

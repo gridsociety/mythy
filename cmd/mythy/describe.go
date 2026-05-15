@@ -47,8 +47,8 @@ func printDescribe(w io.Writer, tpl *catalog.Template, d *catalog.Data, g *catal
 		fmt.Fprintf(w, "description: %s\n", d.Description)
 	}
 	fmt.Fprintf(w, "path: %s\n", g.Path())
-	if d.Tipo != "" {
-		fmt.Fprintf(w, "tipo: %s\n", d.Tipo)
+	if t := d.DisplayTipo(); t != "" {
+		fmt.Fprintf(w, "tipo: %s\n", t)
 	}
 	if d.Default != "" {
 		fmt.Fprintf(w, "default: %s\n", d.Default)

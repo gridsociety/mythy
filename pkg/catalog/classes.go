@@ -8,6 +8,35 @@ import (
 	"strconv"
 )
 
+// resolveTypedefs rewrites every <DATA TIPO=> in the menu from a typedef
+// alias to its base TIPO (e.g. ENUM_RELE → BIT32) and preserves the
+// original alias in d.XMLTipo. After this pass, switch-on-TIPO sites
+// (read, write, YAML I/O) only need to know the primitive types.
+//
+// Idempotent: safe to call from both ParseTemplate (after parseMenu)
+// and LoadCache (after gob decode) — a Data whose Tipo is already a
+// primitive isn't a Typedefs key, so the lookup is a no-op.
+func (tpl *Template) resolveTypedefs() {
+	if tpl.Menu == nil || len(tpl.Typedefs) == 0 {
+		return
+	}
+	var visit func(g *Group)
+	visit = func(g *Group) {
+		for _, d := range g.Data {
+			if td, ok := tpl.Typedefs[d.Tipo]; ok {
+				if d.XMLTipo == "" {
+					d.XMLTipo = d.Tipo
+				}
+				d.Tipo = td.Tipo
+			}
+		}
+		for _, c := range g.Children {
+			visit(c)
+		}
+	}
+	visit(tpl.Menu)
+}
+
 // parseTypedefsAndClasses streams both <TYPEDEF> and <CLASS> elements.
 // Typedefs are simple (NAME TIPO) aliases; Classes carry nested <VAR>
 // children that describe compound layouts.

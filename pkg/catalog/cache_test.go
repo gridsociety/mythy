@@ -55,6 +55,56 @@ func TestCacheStaleOnMtime(t *testing.T) {
 	}
 }
 
+func TestLoadCacheResolvesTypedefsForStaleCaches(t *testing.T) {
+	// Pre-fix builds saved caches before typedef resolution existed,
+	// so Data.Tipo on disk is still "ENUM_RELE" / "ENUM_LED" / etc.
+	// LoadCache must normalize them on read so callers see the
+	// resolved primitive and never the alias. Realistic scenario:
+	// user upgrades mythy without touching their templates dir.
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "TEST-typedef")
+	// Empty source file is fine — LoadCache only stats it for mtime.
+	if err := os.WriteFile(src, []byte("<DEVICE/>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	pre := &Template{
+		Identification: 42,
+		Messages:       map[string]*Message{},
+		ByAddr:         map[ByAddrKey]*Message{},
+		Enums:          map[string]*Enum{},
+		Classes:        map[string]*Class{},
+		Typedefs: map[string]*Typedef{
+			"ENUM_RELE": {Name: "ENUM_RELE", Tipo: "BIT32"},
+		},
+		Menu: &Group{
+			Data: []*Data{{Name: "SelRele1", Tipo: "ENUM_RELE"}}, // unresolved
+		},
+	}
+	cachePath := filepath.Join(tmp, "TEST-typedef.cache")
+	if err := SaveCache(pre, cachePath); err != nil {
+		t.Fatalf("SaveCache: %v", err)
+	}
+
+	// Make cache strictly newer than the source so it isn't stale-rejected.
+	future := time.Now().Add(1 * time.Second)
+	if err := os.Chtimes(cachePath, future, future); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := LoadCache(cachePath, src)
+	if err != nil {
+		t.Fatalf("LoadCache: %v", err)
+	}
+	d := got.Menu.Data[0]
+	if d.Tipo != "BIT32" {
+		t.Errorf("Tipo = %q, want BIT32 (LoadCache should resolve)", d.Tipo)
+	}
+	if d.XMLTipo != "ENUM_RELE" {
+		t.Errorf("XMLTipo = %q, want ENUM_RELE", d.XMLTipo)
+	}
+}
+
 func copyFile(t *testing.T, src, dst string) error {
 	t.Helper()
 	b, err := os.ReadFile(src)

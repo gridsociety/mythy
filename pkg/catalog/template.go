@@ -77,6 +77,7 @@ func ParseTemplate(path string) (*Template, error) {
 		return nil, fmt.Errorf("parse MENU: %w", err)
 	}
 	linkMenuToMessages(tpl)
+	tpl.resolveTypedefs()
 	return tpl, nil
 }
 
