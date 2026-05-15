@@ -49,7 +49,7 @@ func (c *connFlags) bind(cmd *cobra.Command) {
 		"RTU stop bits: 1 or 2 (or set MYTHY_STOPBITS)")
 	f.Uint8Var(&c.unitID, "unit-id", envOrUint8("MYTHY_UNIT_ID", 1),
 		"Modbus unit ID (default 1; or set MYTHY_UNIT_ID)")
-	f.DurationVar(&c.timeout, "request-timeout", envOrDuration("MYTHY_REQUEST_TIMEOUT", 2*time.Second),
+	f.DurationVar(&c.timeout, "request-timeout", envOrDuration("MYTHY_REQUEST_TIMEOUT", 10*time.Second),
 		"per-request timeout (or set MYTHY_REQUEST_TIMEOUT)")
 	f.DurationVar(&c.connTimeout, "connect-timeout", envOrDuration("MYTHY_CONNECT_TIMEOUT", 5*time.Second),
 		"TCP connect timeout (or set MYTHY_CONNECT_TIMEOUT)")

@@ -281,7 +281,7 @@ hardcoded default**.
 | `--parity` | `MYTHY_PARITY` | `N` | RTU parity: `N`, `E`, or `O` |
 | `--stopbits` | `MYTHY_STOPBITS` | `1` | RTU stop bits |
 | `--unit-id` | `MYTHY_UNIT_ID` | `1` | Modbus unit ID |
-| `--request-timeout` | `MYTHY_REQUEST_TIMEOUT` | `2s` | per-request timeout |
+| `--request-timeout` | `MYTHY_REQUEST_TIMEOUT` | `10s` | per-request timeout |
 | `--connect-timeout` | `MYTHY_CONNECT_TIMEOUT` | `5s` | TCP connect timeout |
 | `--retries` | `MYTHY_RETRIES` | `2` | transient-error retries on reads (writes never retry) |
 | `--transport` | `MYTHY_TRANSPORT` | – | force `tcp` or `rtu`; auto-detected from `--host`/`--serial` |
