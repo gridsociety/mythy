@@ -73,6 +73,162 @@ func TestApplySkipsReadOnly(t *testing.T) {
 	}
 }
 
+func TestApplyClassifiesSkipKeyAsCategorisedAndSkipped(t *testing.T) {
+	// TEST_IP_Address has SKIP="YES" in the fixture. Without
+	// IncludeSkip, Apply must not write it — even though it isn't
+	// READONLY=YES — and it lands in Report.InSkipCategory so the CLI
+	// can render a "skipped N SKIP key(s)" line and hint at the flag.
+	f := transport.NewFake()
+	f.OnReadHolding(6146, 1, []uint16{1}) // current = 1
+	s := mkSession(t, f)
+
+	cf := &configio.ConfigFile{
+		MythyVersion: 1,
+		Device:       configio.Device{Product: "TEST-VX0-a"},
+		Settings:     map[string]any{"TEST_IP_Address": int64(7)},
+	}
+	report, err := configio.Apply(context.Background(), s, cf, configio.ApplyOptions{})
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if len(report.Applied) != 0 {
+		t.Errorf("Applied = %v, want []", report.Applied)
+	}
+	if len(report.InSkipCategory) != 1 || report.InSkipCategory[0] != "TEST_IP_Address" {
+		t.Errorf("InSkipCategory = %v, want [TEST_IP_Address]", report.InSkipCategory)
+	}
+	if len(f.Writes) != 0 {
+		t.Errorf("SKIP key must not be written without IncludeSkip; got %+v", f.Writes)
+	}
+}
+
+func TestApplyWritesSkipKeyWhenIncludeSkipIsSet(t *testing.T) {
+	// With IncludeSkip, the same SKIP=YES key writes through. The key
+	// stays in InSkipCategory (the classification field) AND appears in
+	// Applied — both fields are needed by the CLI banner.
+	f := transport.NewFake()
+	f.OnReadHolding(6146, 1, []uint16{1})
+	f.OnReadInput(0x1402, 1, []uint16{1}) // START_CHANGE_DB
+	f.OnWriteSingleOK(6146)
+	f.OnReadInput(0x1403, 1, []uint16{1}) // END_CHANGE_DB
+	s := mkSession(t, f)
+
+	cf := &configio.ConfigFile{
+		MythyVersion: 1,
+		Device:       configio.Device{Product: "TEST-VX0-a"},
+		Settings:     map[string]any{"TEST_IP_Address": int64(7)},
+	}
+	report, err := configio.Apply(context.Background(), s, cf, configio.ApplyOptions{IncludeSkip: true})
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if len(report.Applied) != 1 || report.Applied[0] != "TEST_IP_Address" {
+		t.Errorf("Applied = %v, want [TEST_IP_Address]", report.Applied)
+	}
+	if len(report.InSkipCategory) != 1 {
+		t.Errorf("InSkipCategory must still list the key for banner: got %v", report.InSkipCategory)
+	}
+	if len(f.Writes) != 1 || f.Writes[0].Addr != 6146 || f.Writes[0].Values[0] != 7 {
+		t.Errorf("expected FC06 write TEST_IP_Address=7, got %+v", f.Writes)
+	}
+}
+
+func TestApplyClassifiesHiddenKeyByCascadeFromParentGroup(t *testing.T) {
+	// TEST_EnableBoard's parent group `Administrator/Modules assigned`
+	// has VISIBILITY="3". The DATA itself has no VISIBILITY attribute;
+	// the cascade-from-ancestor is what hides it. Without
+	// IncludeHidden, Apply refuses the write.
+	f := transport.NewFake()
+	f.OnReadHolding(6147, 1, []uint16{1})
+	s := mkSession(t, f)
+
+	cf := &configio.ConfigFile{
+		MythyVersion: 1,
+		Device:       configio.Device{Product: "TEST-VX0-a"},
+		Settings:     map[string]any{"TEST_EnableBoard": int64(0)},
+	}
+	report, err := configio.Apply(context.Background(), s, cf, configio.ApplyOptions{})
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if len(report.Applied) != 0 {
+		t.Errorf("Applied = %v, want []", report.Applied)
+	}
+	if len(report.InHiddenCategory) != 1 || report.InHiddenCategory[0] != "TEST_EnableBoard" {
+		t.Errorf("InHiddenCategory = %v, want [TEST_EnableBoard]", report.InHiddenCategory)
+	}
+	if len(f.Writes) != 0 {
+		t.Errorf("hidden key must not be written without IncludeHidden; got %+v", f.Writes)
+	}
+}
+
+func TestApplyWritesHiddenKeyWhenIncludeHiddenIsSet(t *testing.T) {
+	f := transport.NewFake()
+	f.OnReadHolding(6147, 1, []uint16{1})
+	f.OnReadInput(0x1402, 1, []uint16{1})
+	f.OnWriteSingleOK(6147)
+	f.OnReadInput(0x1403, 1, []uint16{1})
+	s := mkSession(t, f)
+
+	cf := &configio.ConfigFile{
+		MythyVersion: 1,
+		Device:       configio.Device{Product: "TEST-VX0-a"},
+		Settings:     map[string]any{"TEST_EnableBoard": int64(0)},
+	}
+	report, err := configio.Apply(context.Background(), s, cf, configio.ApplyOptions{IncludeHidden: true})
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if len(report.Applied) != 1 || report.Applied[0] != "TEST_EnableBoard" {
+		t.Errorf("Applied = %v, want [TEST_EnableBoard]", report.Applied)
+	}
+	if len(f.Writes) != 1 || f.Writes[0].Addr != 6147 || f.Writes[0].Values[0] != 0 {
+		t.Errorf("expected FC06 write TEST_EnableBoard=0, got %+v", f.Writes)
+	}
+}
+
+func TestApplyDryRunSurfacesEveryCategoryInOnePass(t *testing.T) {
+	// Single dry-run pass produces a complete classification — the
+	// CLI banner relies on this so opt-in flags can be reasoned about
+	// without running the diff twice.
+	f := transport.NewFake()
+	f.OnReadHolding(6145, 1, []uint16{1})            // MB_address (writable)
+	f.OnReadHolding(6146, 1, []uint16{1})            // TEST_IP_Address (SKIP)
+	f.OnReadHolding(6147, 1, []uint16{1})            // TEST_EnableBoard (hidden)
+	f.OnReadHolding(6199, 10, make([]uint16, 10))    // NomeLinea (READONLY)
+	s := mkSession(t, f)
+
+	cf := &configio.ConfigFile{
+		MythyVersion: 1,
+		Device:       configio.Device{Product: "TEST-VX0-a"},
+		Settings: map[string]any{
+			"MB_address":       int64(5),
+			"TEST_IP_Address":  int64(7),
+			"TEST_EnableBoard": int64(0),
+			"NomeLinea":        "X",
+		},
+	}
+	report, err := configio.ApplyDryRun(context.Background(), s, cf, configio.ApplyOptions{})
+	if err != nil {
+		t.Fatalf("ApplyDryRun: %v", err)
+	}
+	if len(report.WouldApply) != 1 || report.WouldApply[0] != "MB_address" {
+		t.Errorf("WouldApply = %v, want [MB_address]", report.WouldApply)
+	}
+	if len(report.Skipped) != 1 || report.Skipped[0] != "NomeLinea" {
+		t.Errorf("Skipped (READONLY) = %v, want [NomeLinea]", report.Skipped)
+	}
+	if len(report.InSkipCategory) != 1 || report.InSkipCategory[0] != "TEST_IP_Address" {
+		t.Errorf("InSkipCategory = %v, want [TEST_IP_Address]", report.InSkipCategory)
+	}
+	if len(report.InHiddenCategory) != 1 || report.InHiddenCategory[0] != "TEST_EnableBoard" {
+		t.Errorf("InHiddenCategory = %v, want [TEST_EnableBoard]", report.InHiddenCategory)
+	}
+	if len(f.Writes) != 0 {
+		t.Errorf("dry-run must not write; got %+v", f.Writes)
+	}
+}
+
 func TestApplyDryRunNoWrites(t *testing.T) {
 	f := transport.NewFake()
 	f.OnReadHolding(6145, 1, []uint16{1})

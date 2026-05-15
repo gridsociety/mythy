@@ -38,6 +38,14 @@
                CLASS="UBYTE_PARAM" type="WREG" num="6146" dim="1"/>
       <message name="MB_addressResponse"/>
 
+      <message level="BY_USER_LEVEL_2" dsc="IP test address" name="TEST_IP_Address"
+               CLASS="UBYTE_PARAM" type="WREG" num="6147" dim="1"/>
+      <message name="TEST_IP_AddressResponse"/>
+
+      <message level="BY_USER_LEVEL_1" dsc="Module enable test" name="TEST_EnableBoard"
+               CLASS="UBYTE_PARAM" type="WREG" num="6148" dim="1"/>
+      <message name="TEST_EnableBoardResponse"/>
+
       <message level="BY_USER_LEVEL_1" dsc="Reference name" name="NomeLinea"
                CLASS="STRING_PARAM" type="WREG" num="6200" dim="10"/>
       <message name="NomeLineaResponse"/>
@@ -135,10 +143,16 @@
       <GROUP NAME="RS485">
         <DATA NAME="MB_baudrate" DSC="Baudrate RS485" TIPO="ENUM" ENUM="EnumBaudrate" VALORE="3" DEFAULT="3"/>
       </GROUP>
+      <GROUP NAME="Ethernet">
+        <DATA NAME="TEST_IP_Address" DSC="IP test address" TIPO="UBYTE" SKIP="YES" VALORE="1" DEFAULT="1"/>
+      </GROUP>
     </GROUP>
     <GROUP NAME="Administrator" VISIBILITY="3">
       <GROUP NAME="Identification" VISIBILITY="3">
         <DATA NAME="Identification" DSC="Identifier number" TIPO="WORD" VALORE="99999" DEFAULT="99999" READONLY="YES"/>
+      </GROUP>
+      <GROUP NAME="Modules assigned" VISIBILITY="3">
+        <DATA NAME="TEST_EnableBoard" DSC="Module enable test" TIPO="UBYTE" VALORE="1" DEFAULT="1"/>
       </GROUP>
       <GROUP NAME="Parser 61850" VISIBILITY="3">
         <COMMAND NAME="MSG_GST61850" DSC="61850 Support" VISIBILITY="1"/>

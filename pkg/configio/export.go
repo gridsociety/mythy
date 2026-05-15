@@ -161,10 +161,15 @@ func Export(ctx context.Context, s *session.Session, opts ExportOptions) ([]byte
 }
 
 func toDataInfo(g *catalog.Group, d *catalog.Data) session.DataInfo {
+	// "Hidden" covers both the containing group's VISIBILITY="3"
+	// (Administrator subtree wholesale) and the DATA's own
+	// VISIBILITY="3" (outliers like CodeNum, sitting in an
+	// otherwise-visible group). Symmetric with the import-side filter
+	// in pkg/configio/apply.go:visibleDataNames.
 	return session.DataInfo{
 		Name:     d.Name,
 		ReadOnly: d.ReadOnly,
-		Hidden:   g.Visibility == "3",
+		Hidden:   g.Visibility == "3" || d.Visibility == "3",
 		Skip:     d.Skip,
 		Module:   d.Module,
 	}

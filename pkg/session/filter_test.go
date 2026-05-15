@@ -18,7 +18,7 @@ func TestFilterDefaultsExcludeReadOnlyHiddenAndSkip(t *testing.T) {
 		t.Error("hidden excluded by default")
 	}
 	if keep("X", false, false, true, "") {
-		t.Error("SKIP=YES always excluded")
+		t.Error("SKIP=YES excluded by default")
 	}
 	if !keep("X", false, false, false, "") {
 		t.Error("plain DATA must be kept")
@@ -49,9 +49,15 @@ func TestFilterIncludeReadOnlyOverride(t *testing.T) {
 	}
 }
 
-func TestFilterSkipNeverOverridable(t *testing.T) {
-	f := session.ExportFilter{IncludeReadOnly: true, IncludeHidden: true}
-	if f.KeepData(session.DataInfo{Name: "X", Skip: true}, nil) {
-		t.Error("SKIP=YES has no override")
+func TestFilterIncludeSkipOverride(t *testing.T) {
+	// Issue #8 added an explicit override for SKIP=YES. With it off,
+	// the marker still excludes; with it on, SKIP=YES is kept.
+	off := session.ExportFilter{IncludeReadOnly: true, IncludeHidden: true}
+	if off.KeepData(session.DataInfo{Name: "X", Skip: true}, nil) {
+		t.Error("SKIP=YES must be excluded when IncludeSkip is false (regardless of other includes)")
+	}
+	on := session.ExportFilter{IncludeSkip: true}
+	if !on.KeepData(session.DataInfo{Name: "X", Skip: true}, nil) {
+		t.Error("--include-skip must keep SKIP=YES entries")
 	}
 }

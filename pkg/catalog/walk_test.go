@@ -37,6 +37,8 @@ func TestWalk(t *testing.T) {
 		"MB_address",
 		"MB_baudrate",
 		"NomeLinea",
+		"TEST_EnableBoard",
+		"TEST_IP_Address",
 		"UL1",
 	}
 	if !equalSlices(got, want) {
