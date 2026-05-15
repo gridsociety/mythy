@@ -239,17 +239,34 @@ mythy import --host 192.0.2.10 sample.yaml
 ```
 
 Read-only, hidden, `SKIP="YES"`, and module-disabled DATA are excluded
-by default. `--include-readonly`, `--include-hidden`, and
-`--include-skip` widen the export; `--all` is shorthand for all three.
+by default. `--include-readonly`, `--include-hidden`,
+`--include-skip`, and `--include-disabled-modules` each widen the
+export by one category; `--all` bundles all four. Every export ends
+with one summary line per non-empty skip category so the omissions
+aren't silent:
 
-`mythy import` mirrors the same flags. By default it refuses to write
-`SKIP="YES"` (identification, IP/comm config — writing these usually
-drops the live connection) or `VISIBILITY="3"` keys (the Administrator
-subtree — wrong values there can leave the device in a state
-requiring a factory reset). To opt in, set the matching `--include-*`
-flag AND `--yes-i-understand`; `--all` is the shortcut for both
-opt-ins together. Without `--yes-i-understand`, the command prints a
-banner of the keys that would be touched and aborts.
+```text
+wrote sample.yaml (12345 bytes)
+skipped 28 READONLY=YES key(s) (use --include-readonly to include)
+skipped 64 module-disabled key(s) (use --include-disabled-modules to include)
+```
+
+`mythy import` mirrors the include flags. By default it refuses to
+write `SKIP="YES"` (identification, IP/comm config — writing these
+usually drops the live connection) or `VISIBILITY="3"` keys (the
+Administrator subtree — wrong values there can leave the device in a
+state requiring a factory reset). To opt in, set the matching
+`--include-*` flag AND `--yes-i-understand`; `--all` is the shortcut
+for both opt-ins together. Without `--yes-i-understand`, the command
+prints a banner of the keys that would be touched and aborts.
+
+Every export records the locale it ran under into the YAML's
+`device.locale` field. `mythy import` / `diff` / `validate` reconcile
+that against `--locale`: when only the file specifies a locale it's
+adopted automatically; when both are set and disagree the command
+refuses with a `LocaleMismatchError` and points at `--force-locale`
+to override. Keeps YAML readable in the operator's native language
+while making cross-locale label drift a loud, opt-in event.
 
 ### Raw escape hatches
 
