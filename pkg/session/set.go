@@ -125,7 +125,7 @@ func (s *Session) encodeForWrite(d *catalog.Data, value any) ([]uint16, error) {
 			return nil, fmt.Errorf("set %s: %w", d.Name, err)
 		}
 		return []uint16{uint16(u)}, nil
-	case "WORD":
+	case "WORD", "INT":
 		i, err := asInt(value, -32768, 32767)
 		if err != nil {
 			return nil, fmt.Errorf("set %s: %w", d.Name, err)
@@ -154,7 +154,7 @@ func (s *Session) encodeForWrite(d *catalog.Data, value any) ([]uint16, error) {
 			return nil, fmt.Errorf("set %s: string %q exceeds %d-char limit", d.Name, str, maxLen)
 		}
 		return encodeStringRegs(str, d.Message.Dim), nil
-	case "ENUM", "ENUM_BYTE", "ENUM_LONG":
+	case "ENUM", "ENUM_BYTE", "ENUM_WORD", "ENUM_LONG":
 		num, err := s.resolveEnumWriteValue(d, value)
 		if err != nil {
 			return nil, err
@@ -171,7 +171,7 @@ func (s *Session) encodeForWrite(d *catalog.Data, value any) ([]uint16, error) {
 		if !ok {
 			return nil, fmt.Errorf("set %s: compound TIPO=%s needs map[string]any, got %T", d.Name, d.Tipo, value)
 		}
-		return codec.EncodeCompound(m, cls, s.tpl.Enums)
+		return codec.EncodeCompound(m, cls, s.tpl.Enums, d.CompoundOverrides)
 	}
 	// ARRAY (and any other unmodelled TIPO that arrives as a raw
 	// register slice from configio.YAMLToCodec): pass through after
@@ -271,7 +271,7 @@ func validateAgainstRange(value any, d *catalog.Data) error {
 	// Skip non-numeric TIPOs; the RANGE on STRING DATA is for character
 	// count, not a comma-triple, so DataRange is nil there anyway.
 	switch d.Tipo {
-	case "STRING", "ENUM", "ENUM_BYTE", "ENUM_LONG":
+	case "STRING", "ENUM", "ENUM_BYTE", "ENUM_WORD", "ENUM_LONG":
 		return nil
 	}
 	// Multi-band DATA (e.g. VLineaPrimario_1): the catalog declares

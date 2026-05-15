@@ -18,7 +18,7 @@ func ValueToYAML(v session.Value) any {
 	switch v.Tipo {
 	case "STRING":
 		return v.Str
-	case "ENUM", "ENUM_BYTE", "ENUM_LONG":
+	case "ENUM", "ENUM_BYTE", "ENUM_WORD", "ENUM_LONG":
 		// Bool round-trip is reserved for the ON_OFF enum specifically;
 		// other enums whose entries happen to be named "ON"/"OFF"
 		// (or that only have one of the two) stay as label strings so
@@ -112,7 +112,7 @@ func YAMLToCodec(tipo, enumName string, in any) (any, error) {
 			return nil, fmt.Errorf("YAMLToCodec %s: %q is not a valid integer or hex string", tipo, x)
 		}
 		return nil, fmt.Errorf("YAMLToCodec %s: expected int or hex string, got %T", tipo, in)
-	case "BYTE", "WORD", "LONG":
+	case "BYTE", "WORD", "INT", "LONG":
 		switch x := in.(type) {
 		case int64:
 			return x, nil
@@ -128,7 +128,7 @@ func YAMLToCodec(tipo, enumName string, in any) (any, error) {
 			return nil, fmt.Errorf("YAMLToCodec STRING: expected string, got %T", in)
 		}
 		return s, nil
-	case "ENUM", "ENUM_BYTE", "ENUM_LONG":
+	case "ENUM", "ENUM_BYTE", "ENUM_WORD", "ENUM_LONG":
 		// Bool only valid for ON_OFF.
 		if b, ok := in.(bool); ok {
 			if enumName != "ON_OFF" {

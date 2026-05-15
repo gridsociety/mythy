@@ -55,6 +55,43 @@ func TestParseMenu(t *testing.T) {
 	}
 }
 
+func TestParseCompoundOverridesFromNestedDATA(t *testing.T) {
+	// Issue #6: <DATA TIPO="<class>"> can carry nested <DATA NAME="..."
+	// TIPO="..."> children that override the CLASS VAR's TIPO for that
+	// instance. Without parsing those, the wire layout falls back to the
+	// (under-filled) CLASS-level widths and writes corrupt the device.
+	tpl, err := ParseTemplate(filepath.Join("..", "..", "testdata", "us", "TEST-VB0-a"))
+	if err != nil {
+		t.Fatalf("ParseTemplate: %v", err)
+	}
+	soglie := tpl.Menu.FindGroup("Set/Soglie")
+	if soglie == nil {
+		t.Fatal("Set/Soglie group missing from fixture")
+	}
+	d := soglie.FindData("TEST_SOGLIA")
+	if d == nil {
+		t.Fatal("TEST_SOGLIA DATA missing")
+	}
+	if d.CompoundOverrides == nil {
+		t.Fatal("CompoundOverrides nil — nested DATA children were not captured")
+	}
+	state, ok := d.CompoundOverrides["State"]
+	if !ok || state.Tipo != "ENUM_LONG" {
+		t.Errorf("State override = %+v, want Tipo=ENUM_LONG", state)
+	}
+	pickup, ok := d.CompoundOverrides["Pickup"]
+	if !ok || pickup.Tipo != "UWORD" {
+		t.Errorf("Pickup override = %+v, want Tipo=UWORD", pickup)
+	}
+	// Other DATA in the same fixture must NOT have overrides (we want to
+	// confirm we didn't accidentally start collecting children for
+	// non-compound DATA).
+	mb := tpl.Menu.FindGroup("Set/Base").FindData("MB_address")
+	if mb.CompoundOverrides != nil {
+		t.Errorf("MB_address (non-compound) accidentally has CompoundOverrides: %+v", mb.CompoundOverrides)
+	}
+}
+
 func equalSlices(a, b []string) bool {
 	if len(a) != len(b) {
 		return false

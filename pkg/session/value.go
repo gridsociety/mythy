@@ -33,7 +33,7 @@ type Value struct {
 // Format renders the value as a human-readable string.
 func (v Value) Format() string {
 	switch v.Tipo {
-	case "ENUM", "ENUM_BYTE", "ENUM_LONG":
+	case "ENUM", "ENUM_BYTE", "ENUM_WORD", "ENUM_LONG":
 		if v.Label != "" {
 			return v.Label
 		}

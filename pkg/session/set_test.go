@@ -46,6 +46,42 @@ func TestSetEnumByLabel(t *testing.T) {
 	}
 }
 
+func TestSetCompoundHonoursCompoundOverrides(t *testing.T) {
+	// Issue #6: encoding a compound DATA must honour the per-instance
+	// CompoundOverrides parsed from nested <DATA> children. TEST_SOGLIA
+	// in the fixture declares SOGLIA_T class with State as ENUM (1 reg
+	// in the class) but overrides it to ENUM_LONG (2 regs) in the
+	// instance, so the encoded payload must be 3 regs.
+	f := transport.NewFake()
+	f.OnReadInput(0x1402, 1, []uint16{1}) // START_CHANGE_DB
+	f.OnWriteMultiOK(6148)                // TEST_SOGLIA wire = num-1 = 6148
+	f.OnReadInput(0x1403, 1, []uint16{1}) // END_CHANGE_DB
+	s := mkSession(t, f)
+
+	if err := s.Set(context.Background(), "TEST_SOGLIA", map[string]any{
+		"State":  int64(1),
+		"Pickup": uint64(42),
+	}); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if len(f.Writes) != 1 {
+		t.Fatalf("Writes = %d, want 1", len(f.Writes))
+	}
+	w := f.Writes[0]
+	if w.FC != 16 {
+		t.Errorf("FC = %d, want 16 (compound goes through WriteMultipleRegisters)", w.FC)
+	}
+	if w.Addr != 6148 {
+		t.Errorf("Addr = %d, want 6148", w.Addr)
+	}
+	// State ENUM_LONG=1 → regs[0]=0x0001, regs[1]=0x0000;
+	// Pickup UWORD=42 → regs[2]=0x002A.
+	want := []uint16{0x0001, 0x0000, 0x002A}
+	if len(w.Values) != 3 || w.Values[0] != want[0] || w.Values[1] != want[1] || w.Values[2] != want[2] {
+		t.Errorf("Values = %v, want %v (pre-fix would emit only 2 regs)", w.Values, want)
+	}
+}
+
 func TestSetManyOneTransaction(t *testing.T) {
 	f := transport.NewFake()
 	f.OnReadInput(0x1402, 1, []uint16{1})
