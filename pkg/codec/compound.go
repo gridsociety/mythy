@@ -179,6 +179,11 @@ func enumNum(val any, v catalog.ClassVar) int {
 			}
 		}
 		return 0
+	case int:
+		// YAML decoders typically produce `int` for small integers; the
+		// previous version of this switch only knew int64/uint64, so an
+		// integer enum value silently became 0.
+		return x
 	case int64:
 		return int(x)
 	case uint64:
